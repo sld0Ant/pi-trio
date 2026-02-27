@@ -5,19 +5,40 @@ import {
 	SessionManager,
 	AuthStorage,
 	ModelRegistry,
+	getSettingsListTheme,
 } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { readFileSync, readdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { Container, type SettingItem, SettingsList, Text } from "@mariozechner/pi-tui";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Model } from "@mariozechner/pi-ai";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CODE_REVIEWER_PROMPT = join(__dirname, "reviewer-prompt.md");
 const PLAN_REVIEWER_PROMPT = join(__dirname, "plan-reviewer-prompt.md");
+const PROFILES_DIR = join(__dirname, "profiles");
 
-async function runSubAgent(model: Model, systemPromptPath: string, userPrompt: string): Promise<string> {
-	const systemPrompt = readFileSync(systemPromptPath, "utf-8");
+function loadProfiles(): Map<string, string> {
+	const profiles = new Map<string, string>();
+	if (!existsSync(PROFILES_DIR)) return profiles;
+
+	try {
+		const entries = readdirSync(PROFILES_DIR, { withFileTypes: true });
+		for (const entry of entries) {
+			if (entry.isFile() && entry.name.endsWith(".md")) {
+				const name = basename(entry.name, ".md");
+				const content = readFileSync(join(PROFILES_DIR, entry.name), "utf-8");
+				profiles.set(name, content);
+			}
+		}
+	} catch {
+		// profiles dir unreadable — proceed without profiles
+	}
+	return profiles;
+}
+
+async function runSubAgent(model: Model, systemPrompt: string, userPrompt: string): Promise<string> {
 	const authStorage = AuthStorage.create();
 	const modelRegistry = new ModelRegistry(authStorage);
 
@@ -69,15 +90,99 @@ function readSpecs(specsDir: string): string {
 	return content;
 }
 
+function buildPrompt(basePromptPath: string, profileContents: Map<string, string>): string {
+	let prompt = readFileSync(basePromptPath, "utf-8");
+	if (profileContents.size > 0) {
+		for (const [name, content] of profileContents) {
+			prompt += `\n\n## Profile: ${name}\n\n${content}`;
+		}
+	}
+	return prompt;
+}
+
 function parseVerdict(text: string): string {
 	return text.includes("PASS") && !text.includes("NEEDS WORK") ? "PASS" : "NEEDS WORK";
 }
 
 export default function (pi: ExtensionAPI) {
 	let currentModel: Model | undefined;
+	let activeProfiles = new Map<string, string>();
+
+	function restoreProfiles(entries: Iterable<{ type: string; customType?: string; data?: Record<string, unknown> }>): boolean {
+		for (const entry of entries) {
+			if (entry.type === "custom" && entry.customType === "trio-reviewer-profiles") {
+				const savedNames = entry.data?.names as string[] | undefined;
+				if (savedNames?.length) {
+					const allProfiles = loadProfiles();
+					activeProfiles = new Map<string, string>();
+					for (const name of savedNames) {
+						const content = allProfiles.get(name);
+						if (content) activeProfiles.set(name, content);
+					}
+					return activeProfiles.size > 0;
+				}
+			}
+		}
+		return false;
+	}
 
 	pi.on("session_start", async (_event, ctx) => {
 		currentModel = ctx.model;
+
+		if (restoreProfiles(ctx.sessionManager.getEntries())) return;
+		if (!ctx.hasUI) return;
+
+		const allProfiles = loadProfiles();
+		if (allProfiles.size === 0) return;
+
+		const enabled = new Set<string>();
+
+		await ctx.ui.custom((_tui, theme, _kb, done) => {
+			const container = new Container();
+			container.addChild(new Text(theme.fg("accent", theme.bold("Reviewer Profiles")), 1, 1));
+
+			const items: SettingItem[] = [...allProfiles.keys()].map((name) => ({
+				id: name,
+				label: name,
+				currentValue: "off",
+				values: ["on", "off"],
+			}));
+
+			const settingsList = new SettingsList(
+				items,
+				Math.min(items.length + 2, 15),
+				getSettingsListTheme(),
+				(id, newValue) => {
+					if (newValue === "on") {
+						enabled.add(id);
+					} else {
+						enabled.delete(id);
+					}
+				},
+				() => done(undefined),
+			);
+			container.addChild(settingsList);
+			container.addChild(new Text(theme.fg("dim", "space toggle • esc confirm"), 1, 0));
+
+			return {
+				render: (w: number) => container.render(w),
+				invalidate: () => container.invalidate(),
+				handleInput: (data: string) => {
+					settingsList.handleInput?.(data);
+					_tui.requestRender();
+				},
+			};
+		});
+
+		if (enabled.size === 0) return;
+
+		activeProfiles = new Map<string, string>();
+		for (const name of enabled) {
+			const content = allProfiles.get(name);
+			if (content) activeProfiles.set(name, content);
+		}
+
+		pi.appendEntry("trio-reviewer-profiles", { names: [...enabled] });
 	});
 
 	pi.on("model_select", async (event) => {
@@ -109,7 +214,8 @@ Pass the full plan text.`,
 			onUpdate?.({ content: [{ type: "text", text: `Reviewing plan with ${model.name}...` }] });
 
 			try {
-				const result = await runSubAgent(model, PLAN_REVIEWER_PROMPT, `# Plan Review Request\n\n${params.plan}`);
+				const prompt = buildPrompt(PLAN_REVIEWER_PROMPT, activeProfiles);
+				const result = await runSubAgent(model, prompt, `# Plan Review Request\n\n${params.plan}`);
 				return {
 					content: [{ type: "text", text: result }],
 					details: { verdict: parseVerdict(result), type: "plan" },
@@ -165,7 +271,8 @@ Pass the plan text, list of created/modified file paths, and optionally the Open
 			}
 
 			try {
-				const result = await runSubAgent(model, CODE_REVIEWER_PROMPT, prompt);
+				const reviewerSystemPrompt = buildPrompt(CODE_REVIEWER_PROMPT, activeProfiles);
+				const result = await runSubAgent(model, reviewerSystemPrompt, prompt);
 				return {
 					content: [{ type: "text", text: result }],
 					details: { verdict: parseVerdict(result), filesReviewed: files.length, hasSpecs: !!specsDir },
