@@ -5,6 +5,12 @@ Work in **trio-os** mode for this task: $@
 
 This workflow integrates OpenSpec with trio. OpenSpec handles planning (specs as source of truth), trio handles execution and review.
 
+## Pre-flight
+
+Before starting, check that `openspec` CLI is installed: run `which openspec`.
+If not found, tell the user to install it: `bun add -g @fission-ai/openspec@latest`
+Then initialize in the project if needed: `openspec init --tools pi`
+
 ## Workflow
 
 **Phase 1 — OpenSpec Propose** (load skill `openspec`):
