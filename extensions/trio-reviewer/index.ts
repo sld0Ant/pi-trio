@@ -107,6 +107,7 @@ function parseVerdict(text: string): string {
 export default function (pi: ExtensionAPI) {
 	let currentModel: Model | undefined;
 	let activeProfiles = new Map<string, string>();
+	let profilesResolved = false;
 
 	function restoreProfiles(entries: Iterable<{ type: string; customType?: string; data?: Record<string, unknown> }>): boolean {
 		for (const entry of entries) {
@@ -119,25 +120,29 @@ export default function (pi: ExtensionAPI) {
 						const content = allProfiles.get(name);
 						if (content) activeProfiles.set(name, content);
 					}
-					return activeProfiles.size > 0;
+					if (activeProfiles.size > 0) {
+						profilesResolved = true;
+						return true;
+					}
 				}
 			}
 		}
 		return false;
 	}
 
-	pi.on("session_start", async (_event, ctx) => {
-		currentModel = ctx.model;
+	// biome-ignore lint: ctx type varies between event handlers and tool execute
+	async function ensureProfiles(ctx: any): Promise<void> {
+		if (profilesResolved) return;
+		profilesResolved = true;
 
 		if (restoreProfiles(ctx.sessionManager.getEntries())) return;
-		if (!ctx.hasUI) return;
 
 		const allProfiles = loadProfiles();
 		if (allProfiles.size === 0) return;
 
 		const enabled = new Set<string>();
 
-		await ctx.ui.custom((_tui, theme, _kb, done) => {
+		await ctx.ui.custom((_tui: any, theme: any, _kb: any, done: (v: undefined) => void) => {
 			const container = new Container();
 			container.addChild(new Text(theme.fg("accent", theme.bold("Reviewer Profiles")), 1, 1));
 
@@ -152,7 +157,7 @@ export default function (pi: ExtensionAPI) {
 				items,
 				Math.min(items.length + 2, 15),
 				getSettingsListTheme(),
-				(id, newValue) => {
+				(id: string, newValue: string) => {
 					if (newValue === "on") {
 						enabled.add(id);
 					} else {
@@ -183,6 +188,11 @@ export default function (pi: ExtensionAPI) {
 		}
 
 		pi.appendEntry("trio-reviewer-profiles", { names: [...enabled] });
+	}
+
+	pi.on("session_start", async (_event, ctx) => {
+		currentModel = ctx.model;
+		restoreProfiles(ctx.sessionManager.getEntries());
 	});
 
 	pi.on("model_select", async (event) => {
@@ -210,6 +220,8 @@ Pass the full plan text.`,
 			if (!model) {
 				return { content: [{ type: "text", text: "ERROR: No model available" }], isError: true };
 			}
+
+			await ensureProfiles(ctx);
 
 			onUpdate?.({ content: [{ type: "text", text: `Reviewing plan with ${model.name}...` }] });
 
@@ -252,6 +264,8 @@ Pass the plan text, list of created/modified file paths, and optionally the Open
 			if (!model) {
 				return { content: [{ type: "text", text: "ERROR: No model available" }], isError: true };
 			}
+
+			await ensureProfiles(ctx);
 
 			onUpdate?.({ content: [{ type: "text", text: `Reviewing ${files.length} files with ${model.name}...` }] });
 
