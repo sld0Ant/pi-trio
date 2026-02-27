@@ -8,7 +8,7 @@ import {
 	getSettingsListTheme,
 } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { Container, type SettingItem, SettingsList, Text } from "@mariozechner/pi-tui";
+import { Container, type SettingItem, SettingsList, Text, matchesKey } from "@mariozechner/pi-tui";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -133,16 +133,21 @@ export default function (pi: ExtensionAPI) {
 	// biome-ignore lint: ctx type varies between event handlers and tool execute
 	async function ensureProfiles(ctx: any): Promise<void> {
 		if (profilesResolved) return;
-		profilesResolved = true;
 
-		if (restoreProfiles(ctx.sessionManager.getEntries())) return;
+		if (restoreProfiles(ctx.sessionManager.getEntries())) {
+			profilesResolved = true;
+			return;
+		}
 
 		const allProfiles = loadProfiles();
-		if (allProfiles.size === 0) return;
+		if (allProfiles.size === 0) {
+			profilesResolved = true;
+			return;
+		}
 
 		const enabled = new Set<string>();
 
-		await ctx.ui.custom((_tui: any, theme: any, _kb: any, done: (v: undefined) => void) => {
+		const confirmed = await ctx.ui.custom<boolean>((_tui: any, theme: any, _kb: any, done: (v: boolean) => void) => {
 			const container = new Container();
 			container.addChild(new Text(theme.fg("accent", theme.bold("Reviewer Profiles")), 1, 1));
 
@@ -164,20 +169,28 @@ export default function (pi: ExtensionAPI) {
 						enabled.delete(id);
 					}
 				},
-				() => done(undefined),
+				() => done(false),
 			);
 			container.addChild(settingsList);
-			container.addChild(new Text(theme.fg("dim", "space toggle • esc confirm"), 1, 0));
+			container.addChild(new Text(theme.fg("dim", "space/enter toggle • tab confirm • esc skip"), 1, 0));
 
 			return {
 				render: (w: number) => container.render(w),
 				invalidate: () => container.invalidate(),
 				handleInput: (data: string) => {
+					if (matchesKey(data, "tab")) {
+						done(true);
+						return;
+					}
 					settingsList.handleInput?.(data);
 					_tui.requestRender();
 				},
 			};
 		});
+
+		if (!confirmed) return;
+
+		profilesResolved = true;
 
 		if (enabled.size === 0) return;
 
@@ -223,14 +236,16 @@ Pass the full plan text.`,
 
 			await ensureProfiles(ctx);
 
-			onUpdate?.({ content: [{ type: "text", text: `Reviewing plan with ${model.name}...` }] });
+			const profileNames = [...activeProfiles.keys()];
+			const profileInfo = profileNames.length > 0 ? ` with profiles: ${profileNames.join(", ")}` : " (no profiles)";
+			onUpdate?.({ content: [{ type: "text", text: `Reviewing plan with ${model.name}${profileInfo}...` }] });
 
 			try {
 				const prompt = buildPrompt(PLAN_REVIEWER_PROMPT, activeProfiles);
 				const result = await runSubAgent(model, prompt, `# Plan Review Request\n\n${params.plan}`);
 				return {
 					content: [{ type: "text", text: result }],
-					details: { verdict: parseVerdict(result), type: "plan" },
+					details: { verdict: parseVerdict(result), type: "plan", profiles: profileNames },
 				};
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
@@ -267,7 +282,9 @@ Pass the plan text, list of created/modified file paths, and optionally the Open
 
 			await ensureProfiles(ctx);
 
-			onUpdate?.({ content: [{ type: "text", text: `Reviewing ${files.length} files with ${model.name}...` }] });
+			const profileNames = [...activeProfiles.keys()];
+			const profileInfo = profileNames.length > 0 ? ` with profiles: ${profileNames.join(", ")}` : " (no profiles)";
+			onUpdate?.({ content: [{ type: "text", text: `Reviewing ${files.length} files with ${model.name}${profileInfo}...` }] });
 
 			const fileContents: string[] = [];
 			for (const filePath of files) {
@@ -289,7 +306,7 @@ Pass the plan text, list of created/modified file paths, and optionally the Open
 				const result = await runSubAgent(model, reviewerSystemPrompt, prompt);
 				return {
 					content: [{ type: "text", text: result }],
-					details: { verdict: parseVerdict(result), filesReviewed: files.length, hasSpecs: !!specsDir },
+					details: { verdict: parseVerdict(result), filesReviewed: files.length, hasSpecs: !!specsDir, profiles: profileNames },
 				};
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
