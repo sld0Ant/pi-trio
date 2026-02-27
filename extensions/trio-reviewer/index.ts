@@ -205,6 +205,8 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("session_start", async (_event, ctx) => {
 		currentModel = ctx.model;
+		profilesResolved = false;
+		activeProfiles = new Map<string, string>();
 		restoreProfiles(ctx.sessionManager.getEntries());
 	});
 
