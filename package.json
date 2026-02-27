@@ -1,0 +1,17 @@
+{
+  "name": "pi-trio",
+  "version": "1.0.0",
+  "description": "Trio workflow for Pi: Planner → Executor → independent Reviewer sub-agent. Includes OpenSpec integration via /trio-os.",
+  "keywords": ["pi-package"],
+  "license": "MIT",
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-ai": "*",
+    "@sinclair/typebox": "*"
+  },
+  "pi": {
+    "extensions": ["extensions"],
+    "skills": ["skills"],
+    "prompts": ["prompts"]
+  }
+}
