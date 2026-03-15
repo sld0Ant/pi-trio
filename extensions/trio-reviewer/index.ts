@@ -7,6 +7,7 @@ import {
 	ModelRegistry,
 	getSettingsListTheme,
 } from "@mariozechner/pi-coding-agent";
+import type { AuthStorage as AuthStorageType, ModelRegistry as ModelRegistryType } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { Container, type SettingItem, SettingsList, Text, matchesKey } from "@mariozechner/pi-tui";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
@@ -38,10 +39,13 @@ function loadProfiles(): Map<string, string> {
 	return profiles;
 }
 
-async function runSubAgent(model: Model, systemPrompt: string, userPrompt: string): Promise<string> {
-	const authStorage = AuthStorage.create();
-	const modelRegistry = new ModelRegistry(authStorage);
-
+async function runSubAgent(
+	model: Model,
+	systemPrompt: string,
+	userPrompt: string,
+	authStorage: AuthStorageType,
+	modelRegistry: ModelRegistryType,
+): Promise<string> {
 	const loader = new DefaultResourceLoader({
 		systemPromptOverride: () => systemPrompt,
 		appendSystemPromptOverride: () => [],
@@ -106,6 +110,8 @@ function parseVerdict(text: string): string {
 
 export default function (pi: ExtensionAPI) {
 	let currentModel: Model | undefined;
+	let currentAuthStorage: AuthStorageType | undefined;
+	let currentModelRegistry: ModelRegistryType | undefined;
 	let activeProfiles = new Map<string, string>();
 	let profilesResolved = false;
 
@@ -205,6 +211,8 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("session_start", async (_event, ctx) => {
 		currentModel = ctx.model;
+		currentAuthStorage = ctx.authStorage;
+		currentModelRegistry = ctx.modelRegistry;
 		profilesResolved = false;
 		activeProfiles = new Map<string, string>();
 		restoreProfiles(ctx.sessionManager.getEntries());
@@ -232,8 +240,13 @@ Pass the full plan text.`,
 
 		async execute(toolCallId, params, signal, onUpdate, ctx) {
 			const model = getModel(ctx);
+			const authStorage = currentAuthStorage ?? ctx.authStorage;
+			const modelRegistry = currentModelRegistry ?? ctx.modelRegistry;
 			if (!model) {
 				return { content: [{ type: "text", text: "ERROR: No model available" }], isError: true };
+			}
+			if (!authStorage || !modelRegistry) {
+				return { content: [{ type: "text", text: "ERROR: No auth storage or model registry available" }], isError: true };
 			}
 
 			await ensureProfiles(ctx);
@@ -244,7 +257,7 @@ Pass the full plan text.`,
 
 			try {
 				const prompt = buildPrompt(PLAN_REVIEWER_PROMPT, activeProfiles);
-				const result = await runSubAgent(model, prompt, `# Plan Review Request\n\n${params.plan}`);
+				const result = await runSubAgent(model, prompt, `# Plan Review Request\n\n${params.plan}`, authStorage, modelRegistry);
 				return {
 					content: [{ type: "text", text: result }],
 					details: { verdict: parseVerdict(result), type: "plan", profiles: profileNames },
@@ -278,8 +291,13 @@ Pass the plan text, list of created/modified file paths, and optionally the Open
 		async execute(toolCallId, params, signal, onUpdate, ctx) {
 			const { plan, files, specs_dir: specsDir } = params;
 			const model = getModel(ctx);
+			const authStorage = currentAuthStorage ?? ctx.authStorage;
+			const modelRegistry = currentModelRegistry ?? ctx.modelRegistry;
 			if (!model) {
 				return { content: [{ type: "text", text: "ERROR: No model available" }], isError: true };
+			}
+			if (!authStorage || !modelRegistry) {
+				return { content: [{ type: "text", text: "ERROR: No auth storage or model registry available" }], isError: true };
 			}
 
 			await ensureProfiles(ctx);
@@ -305,7 +323,7 @@ Pass the plan text, list of created/modified file paths, and optionally the Open
 
 			try {
 				const reviewerSystemPrompt = buildPrompt(CODE_REVIEWER_PROMPT, activeProfiles);
-				const result = await runSubAgent(model, reviewerSystemPrompt, prompt);
+				const result = await runSubAgent(model, reviewerSystemPrompt, prompt, authStorage, modelRegistry);
 				return {
 					content: [{ type: "text", text: result }],
 					details: { verdict: parseVerdict(result), filesReviewed: files.length, hasSpecs: !!specsDir, profiles: profileNames },
