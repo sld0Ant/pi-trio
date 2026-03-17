@@ -447,7 +447,7 @@
 
     "pend": ["pend@1.2.0", "", {}, "sha512-F3asv42UuXchdzt+xXqfW1OGlVBe+mxa2mqI0pg5yAHZPvFmY3Y6drSf/GQ1A86WgWEN9Kzh/WrgKa6iGcHXLg=="],
 
-    "pi-openspec": ["pi-openspec@github:sld0Ant/pi-openspec#29b1c04", {}, "sld0Ant-pi-openspec-29b1c04"],
+    "pi-openspec": ["pi-openspec@github:sld0Ant/pi-openspec#a8d6829", {}, "sld0Ant-pi-openspec-a8d6829", "sha512-mUAGfPvzhvfsL6IeMylJUwGqjWHarzBwsF/ktxgzPSQ6xCs8r3uB/DZ73hDsAgo76dxs07wqsw//ezyUeSDFyg=="],
 
     "proper-lockfile": ["proper-lockfile@4.1.2", "", { "dependencies": { "graceful-fs": "^4.2.4", "retry": "^0.12.0", "signal-exit": "^3.0.2" } }, "sha512-TjNPblN4BwAWMXU8s9AEz4JmQxnD1NNL7bNOY/AKUzyamc379FWASUhc/K1pL2noVb+XmZKLL68cjzLsiOAMaA=="],
 

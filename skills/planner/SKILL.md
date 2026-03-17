@@ -43,8 +43,8 @@ Produce a plan in this format:
 ## Implementation Order
 (numbered steps, each with clear scope and deliverable — dependencies first)
 
-## Open Questions
-(anything still unresolved)
+## Assumptions
+(anything assumed but not explicitly confirmed — flag for user review)
 ```
 
 Adapt sections to the project type. Skip irrelevant sections (e.g. no "Data Flow" for a static site, no "Responsive Strategy" for a CLI tool). Add relevant sections as needed (e.g. "Database Schema", "API Endpoints", "Deployment").
@@ -58,7 +58,7 @@ If verdict is PASS — present the plan to the user for final approval.
 ### Phase 4 — Handoff
 
 After the user approves the plan:
-1. State: "План утверждён. Передаю Executor'у на реализацию."
+1. State that the plan is approved and hand off to the Executor for implementation.
 2. Switch to Executor role
 
 ## Rules
@@ -69,3 +69,4 @@ After the user approves the plan:
 - Prefer existing project conventions over personal preferences
 - Do NOT write code — only plan
 - If context references exist (other projects, docs), extract only what's needed — don't read everything
+- If the plan is ambiguous or incomplete, resolve it before Phase 3 — do not hand off plans with open questions

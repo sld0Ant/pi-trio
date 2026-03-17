@@ -10,9 +10,9 @@ The Reviewer runs as a separate LLM session with clean context — it sees only 
 pi install git:github.com/sld0Ant/pi-trio
 ```
 
-This installs trio skills, prompts, the reviewer extension, and bundles [pi-openspec](https://github.com/sld0Ant/pi-openspec) (skill + prompts).
+Everything is installed in one step — trio skills, prompts, the reviewer extension, and bundled [pi-openspec](https://github.com/sld0Ant/pi-openspec) (skill + prompts). No npm publishing required.
 
-For `/trio-os`, the OpenSpec CLI is also required:
+For `/trio-os`, the OpenSpec CLI is also needed:
 
 ```bash
 bun add -g @fission-ai/openspec@latest
@@ -52,6 +52,22 @@ Trio integrated with OpenSpec (spec-driven development):
 | Prompt | `prompts/trio.md` | `/trio` command |
 | Prompt | `prompts/trio-os.md` | `/trio-os` command |
 | Bundled | `node_modules/pi-openspec/` | OpenSpec skill + `/openspec` prompt |
+
+## How it's packaged
+
+pi-trio is a [pi package](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/packages.md) distributed via git. The `package.json` declares everything pi needs to discover:
+
+```json
+{
+  "pi": {
+    "extensions": ["extensions"],
+    "skills": ["skills", "node_modules/pi-openspec/skills"],
+    "prompts": ["prompts", "node_modules/pi-openspec/prompts"]
+  }
+}
+```
+
+pi-openspec is bundled as a git dependency — `pi install` pulls both repos, runs `bun install`, and wires up all extensions, skills, and prompts automatically. No npm registry involved.
 
 ## Architecture
 

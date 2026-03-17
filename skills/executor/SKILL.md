@@ -36,7 +36,7 @@ After implementation is complete:
 2. Call `trio_review` tool with:
    - `plan`: the approved plan text
    - `files`: list of all created/modified file absolute paths
-   - `specs_dir`: path to OpenSpec specs if they exist
+   - `specs_dir`: path to OpenSpec specs if they exist (look for `openspec/` directory in the project root)
 3. Wait for the review result
 
 ### Phase 4 — Fix After Review
@@ -51,18 +51,18 @@ When verdict is PASS — report the final result to the user.
 
 ## Code Standards
 
-### General
 - Follow existing project code style (indentation, quotes, naming conventions)
-- `const` by default, `let` when reassignment is needed, no `var`
 - Handle errors in async operations
 - Clean up resources (event listeners, connections, timers)
 - No debug artifacts (console.log, commented-out code)
 
-### Deviation Policy
+## Deviation Policy
+
 - Do NOT add features not in the plan
 - Do NOT skip or simplify steps from the plan
+- If the plan is ambiguous or missing critical details, ask the user for clarification before proceeding
 - If you need to deviate from the plan, state it explicitly before proceeding:
-  "Отклонение от плана: [what and why]"
+  "Deviation from plan: [what and why]"
 
 ## Rules
 
