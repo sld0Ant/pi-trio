@@ -7,7 +7,7 @@ import {
 	ModelRegistry,
 	getSettingsListTheme,
 } from "@mariozechner/pi-coding-agent";
-import type { AuthStorage as AuthStorageType, ModelRegistry as ModelRegistryType } from "@mariozechner/pi-coding-agent";
+
 import { Type } from "@sinclair/typebox";
 import { Container, type SettingItem, SettingsList, Text, matchesKey } from "@mariozechner/pi-tui";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
@@ -43,8 +43,8 @@ async function runSubAgent(
 	model: Model,
 	systemPrompt: string,
 	userPrompt: string,
-	authStorage: AuthStorageType,
-	modelRegistry: ModelRegistryType,
+	authStorage: AuthStorage,
+	modelRegistry: ModelRegistry,
 ): Promise<string> {
 	const loader = new DefaultResourceLoader({
 		systemPromptOverride: () => systemPrompt,
@@ -110,8 +110,7 @@ function parseVerdict(text: string): string {
 
 export default function (pi: ExtensionAPI) {
 	let currentModel: Model | undefined;
-	let currentAuthStorage: AuthStorageType | undefined;
-	let currentModelRegistry: ModelRegistryType | undefined;
+	let currentModelRegistry: ModelRegistry | undefined;
 	let activeProfiles = new Map<string, string>();
 	let profilesResolved = false;
 
@@ -211,7 +210,6 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("session_start", async (_event, ctx) => {
 		currentModel = ctx.model;
-		currentAuthStorage = ctx.authStorage;
 		currentModelRegistry = ctx.modelRegistry;
 		profilesResolved = false;
 		activeProfiles = new Map<string, string>();
@@ -240,8 +238,8 @@ Pass the full plan text.`,
 
 		async execute(toolCallId, params, signal, onUpdate, ctx) {
 			const model = getModel(ctx);
-			const authStorage = currentAuthStorage ?? ctx.authStorage;
 			const modelRegistry = currentModelRegistry ?? ctx.modelRegistry;
+			const authStorage = modelRegistry?.authStorage;
 			if (!model) {
 				return { content: [{ type: "text", text: "ERROR: No model available" }], isError: true };
 			}
@@ -291,8 +289,8 @@ Pass the plan text, list of created/modified file paths, and optionally the Open
 		async execute(toolCallId, params, signal, onUpdate, ctx) {
 			const { plan, files, specs_dir: specsDir } = params;
 			const model = getModel(ctx);
-			const authStorage = currentAuthStorage ?? ctx.authStorage;
 			const modelRegistry = currentModelRegistry ?? ctx.modelRegistry;
+			const authStorage = modelRegistry?.authStorage;
 			if (!model) {
 				return { content: [{ type: "text", text: "ERROR: No model available" }], isError: true };
 			}
