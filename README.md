@@ -10,9 +10,9 @@ The Reviewer runs as a separate LLM session with clean context — it sees only 
 pi install git:github.com/sld0Ant/pi-trio
 ```
 
-This installs trio skills, prompts, the reviewer extension, and bundles [pi-openspec](https://github.com/sld0Ant/pi-openspec) (skill + prompts).
+Everything is installed in one step — trio skills, prompts, the reviewer extension, and OpenSpec skill. No npm publishing required.
 
-For `/trio-os`, the OpenSpec CLI is also required:
+For `/trio-os`, the OpenSpec CLI is also needed:
 
 ```bash
 bun add -g @fission-ai/openspec@latest
@@ -49,9 +49,19 @@ Trio integrated with OpenSpec (spec-driven development):
 | Extension | `extensions/trio-reviewer/` | Registers `trio_plan_review` and `trio_review` tools (SDK sub-agents) |
 | Skill | `skills/planner/` | Universal planner |
 | Skill | `skills/executor/` | Universal executor with deviation policy |
+| Skill | `skills/openspec/` | OpenSpec (spec-driven development) |
 | Prompt | `prompts/trio.md` | `/trio` command |
 | Prompt | `prompts/trio-os.md` | `/trio-os` command |
-| Bundled | `node_modules/pi-openspec/` | OpenSpec skill + `/openspec` prompt |
+| Prompt | `prompts/openspec.md` | `/openspec` command |
+
+## Standalone review tools
+
+The reviewer tools can be called directly outside of the `/trio` workflow:
+
+- **`trio_plan_review`** — pass any plan text to get an independent review
+- **`trio_review`** — pass a plan + file paths to get an independent code review
+
+Just ask the agent: "review this plan with trio_plan_review" or "run trio_review on these files".
 
 ## Architecture
 
