@@ -4,10 +4,6 @@
   "description": "Trio workflow for Pi: Planner → Executor → independent Reviewer sub-agent. Includes OpenSpec integration via /trio-os.",
   "keywords": ["pi-package"],
   "license": "MIT",
-  "dependencies": {
-    "pi-openspec": "https://github.com/sld0Ant/pi-openspec.git"
-  },
-  "bundledDependencies": ["pi-openspec"],
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",
     "@mariozechner/pi-ai": "*",
@@ -15,7 +11,7 @@
   },
   "pi": {
     "extensions": ["extensions"],
-    "skills": ["skills", "node_modules/pi-openspec/skills"],
-    "prompts": ["prompts", "node_modules/pi-openspec/prompts"]
+    "skills": ["skills"],
+    "prompts": ["prompts"]
   }
 }

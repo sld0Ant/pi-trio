@@ -18,24 +18,30 @@ import type { Model } from "@mariozechner/pi-ai";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CODE_REVIEWER_PROMPT = join(__dirname, "reviewer-prompt.md");
 const PLAN_REVIEWER_PROMPT = join(__dirname, "plan-reviewer-prompt.md");
-const PROFILES_DIR = join(__dirname, "profiles");
+const BUILTIN_PROFILES_DIR = join(__dirname, "profiles");
+const GLOBAL_PROFILES_DIR = join(process.env.HOME ?? "~", ".pi", "agent", "trio-profiles");
+const PROJECT_PROFILES_DIR = join(process.cwd(), ".pi", "trio-profiles");
 
-function loadProfiles(): Map<string, string> {
-	const profiles = new Map<string, string>();
-	if (!existsSync(PROFILES_DIR)) return profiles;
-
+function loadProfilesFromDir(dir: string, profiles: Map<string, string>): void {
+	if (!existsSync(dir)) return;
 	try {
-		const entries = readdirSync(PROFILES_DIR, { withFileTypes: true });
+		const entries = readdirSync(dir, { withFileTypes: true });
 		for (const entry of entries) {
 			if (entry.isFile() && entry.name.endsWith(".md")) {
 				const name = basename(entry.name, ".md");
-				const content = readFileSync(join(PROFILES_DIR, entry.name), "utf-8");
-				profiles.set(name, content);
+				profiles.set(name, readFileSync(join(dir, entry.name), "utf-8"));
 			}
 		}
 	} catch {
-		// profiles dir unreadable — proceed without profiles
+		// dir unreadable — skip
 	}
+}
+
+function loadProfiles(): Map<string, string> {
+	const profiles = new Map<string, string>();
+	loadProfilesFromDir(BUILTIN_PROFILES_DIR, profiles);
+	loadProfilesFromDir(GLOBAL_PROFILES_DIR, profiles);
+	loadProfilesFromDir(PROJECT_PROFILES_DIR, profiles);
 	return profiles;
 }
 

@@ -10,9 +10,9 @@ The Reviewer runs as a separate LLM session with clean context — it sees only 
 pi install git:github.com/sld0Ant/pi-trio
 ```
 
-This installs trio skills, prompts, the reviewer extension, and bundles [pi-openspec](https://github.com/sld0Ant/pi-openspec) (skill + prompts).
+Everything is installed in one step — trio skills, prompts, the reviewer extension, and OpenSpec skill. No npm publishing required.
 
-For `/trio-os`, the OpenSpec CLI is also required:
+For `/trio-os`, the OpenSpec CLI is also needed:
 
 ```bash
 bun add -g @fission-ai/openspec@latest
@@ -49,9 +49,54 @@ Trio integrated with OpenSpec (spec-driven development):
 | Extension | `extensions/trio-reviewer/` | Registers `trio_plan_review` and `trio_review` tools (SDK sub-agents) |
 | Skill | `skills/planner/` | Universal planner |
 | Skill | `skills/executor/` | Universal executor with deviation policy |
+| Skill | `skills/openspec/` | OpenSpec (spec-driven development) |
 | Prompt | `prompts/trio.md` | `/trio` command |
 | Prompt | `prompts/trio-os.md` | `/trio-os` command |
-| Bundled | `node_modules/pi-openspec/` | OpenSpec skill + `/openspec` prompt |
+| Prompt | `prompts/openspec.md` | `/openspec` command |
+
+## Standalone review tools
+
+The reviewer tools can be called directly outside of the `/trio` workflow:
+
+- **`trio_plan_review`** — pass any plan text to get an independent review
+- **`trio_review`** — pass a plan + file paths to get an independent code review
+
+Just ask the agent: "review this plan with trio_plan_review" or "run trio_review on these files".
+
+## Reviewer profiles
+
+The reviewer uses profiles — checklists injected into the sub-agent's system prompt. On the first review call in a session, an interactive picker lets you toggle which profiles to apply.
+
+Built-in profiles: `nuxt`, `vue-spa`, `vue-lib`, `vue-testing`, `monorepo`, `docs`, `openspec`.
+
+### Custom profiles
+
+Drop a `.md` file into one of these directories:
+
+| Location | Scope |
+|----------|-------|
+| `.pi/trio-profiles/*.md` | Project-level (this repo only) |
+| `~/.pi/agent/trio-profiles/*.md` | Global (all projects) |
+
+The filename becomes the profile name. The content is a checklist the reviewer follows.
+
+Example `.pi/trio-profiles/fastapi.md`:
+
+```markdown
+You are reviewing a FastAPI application. Focus on async correctness, dependency injection, and Pydantic models.
+
+## Endpoints
+- [ ] All endpoints use async def (not sync def)
+- [ ] Response models defined with Pydantic
+- [ ] Path parameters validated with Path(), query with Query()
+- [ ] Error responses use HTTPException with proper status codes
+
+## Dependencies
+- [ ] Database sessions use Depends() with proper cleanup
+- [ ] Auth dependencies are reusable, not duplicated per endpoint
+```
+
+Project profiles override built-in ones with the same name. Global profiles override built-in ones too.
 
 ## Architecture
 

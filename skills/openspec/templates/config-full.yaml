@@ -1,0 +1,24 @@
+schema: spec-driven
+
+context: |
+  Tech stack: TypeScript, React 19, Node.js 22, PostgreSQL
+  API style: RESTful, JSON responses, documented in docs/api.md
+  Testing: Vitest for unit tests, Playwright for e2e
+  Style: ESLint with Prettier, strict TypeScript
+
+rules:
+  proposal:
+    - Include a rollback plan
+    - Identify affected system components
+    - Define scope and out-of-scope
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Reference existing patterns before creating new ones
+    - RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include decision rationale (Decision Records)
+    - Describe data flow and affected files
+  tasks:
+    - Group by logical phases
+    - Each task completable in one session
+    - Hierarchical numbering (1.1, 1.2, 2.1)
