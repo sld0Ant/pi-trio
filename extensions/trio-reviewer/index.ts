@@ -51,8 +51,14 @@ async function runSubAgent(
 	userPrompt: string,
 	authStorage: AuthStorage,
 	modelRegistry: ModelRegistry,
+	cwd?: string,
 ): Promise<string> {
 	const loader = new DefaultResourceLoader({
+		cwd,
+		noExtensions: true,
+		noSkills: true,
+		noPromptTemplates: true,
+		noThemes: true,
 		systemPromptOverride: () => systemPrompt,
 		appendSystemPromptOverride: () => [],
 	});
@@ -67,6 +73,8 @@ async function runSubAgent(
 		authStorage,
 		modelRegistry,
 	});
+
+	session.setAutoCompactionEnabled(false);
 
 	let result = "";
 	session.subscribe((event) => {
@@ -156,6 +164,13 @@ export default function (pi: ExtensionAPI) {
 			return;
 		}
 
+		// Enable all profiles by default when UI is unavailable or not interactive
+		if (!ctx.hasUI) {
+			activeProfiles = allProfiles;
+			profilesResolved = true;
+			return;
+		}
+
 		const enabled = new Set<string>();
 
 		const confirmed = await ctx.ui.custom<boolean>((_tui: any, theme: any, _kb: any, done: (v: boolean) => void) => {
@@ -199,19 +214,21 @@ export default function (pi: ExtensionAPI) {
 			};
 		});
 
-		if (!confirmed) return;
+		if (!confirmed) {
+			// User skipped profile selection — enable all by default
+			activeProfiles = allProfiles;
+		}
 
 		profilesResolved = true;
 
-		if (enabled.size === 0) return;
-
-		activeProfiles = new Map<string, string>();
-		for (const name of enabled) {
-			const content = allProfiles.get(name);
-			if (content) activeProfiles.set(name, content);
+		if (enabled.size > 0) {
+			activeProfiles = new Map<string, string>();
+			for (const name of enabled) {
+				const content = allProfiles.get(name);
+				if (content) activeProfiles.set(name, content);
+			}
+			pi.appendEntry("trio-reviewer-profiles", { names: [...enabled] });
 		}
-
-		pi.appendEntry("trio-reviewer-profiles", { names: [...enabled] });
 	}
 
 	pi.on("session_start", async (_event, ctx) => {
@@ -261,7 +278,7 @@ Pass the full plan text.`,
 
 			try {
 				const prompt = buildPrompt(PLAN_REVIEWER_PROMPT, activeProfiles);
-				const result = await runSubAgent(model, prompt, `# Plan Review Request\n\n${params.plan}`, authStorage, modelRegistry);
+				const result = await runSubAgent(model, prompt, `# Plan Review Request\n\n${params.plan}`, authStorage, modelRegistry, ctx.cwd);
 				return {
 					content: [{ type: "text", text: result }],
 					details: { verdict: parseVerdict(result), type: "plan", profiles: profileNames },
@@ -327,7 +344,7 @@ Pass the plan text, list of created/modified file paths, and optionally the Open
 
 			try {
 				const reviewerSystemPrompt = buildPrompt(CODE_REVIEWER_PROMPT, activeProfiles);
-				const result = await runSubAgent(model, reviewerSystemPrompt, prompt, authStorage, modelRegistry);
+				const result = await runSubAgent(model, reviewerSystemPrompt, prompt, authStorage, modelRegistry, ctx.cwd);
 				return {
 					content: [{ type: "text", text: result }],
 					details: { verdict: parseVerdict(result), filesReviewed: files.length, hasSpecs: !!specsDir, profiles: profileNames },
