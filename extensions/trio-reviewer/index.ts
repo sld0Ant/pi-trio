@@ -6,6 +6,7 @@ import {
 	AuthStorage,
 	ModelRegistry,
 	getSettingsListTheme,
+	getAgentDir,
 } from "@mariozechner/pi-coding-agent";
 
 import { Type } from "@sinclair/typebox";
@@ -51,10 +52,11 @@ async function runSubAgent(
 	userPrompt: string,
 	authStorage: AuthStorage,
 	modelRegistry: ModelRegistry,
-	cwd?: string,
+	cwd: string,
 ): Promise<string> {
 	const loader = new DefaultResourceLoader({
 		cwd,
+		agentDir: getAgentDir(),
 		noExtensions: true,
 		noSkills: true,
 		noPromptTemplates: true,
@@ -278,7 +280,7 @@ Pass the full plan text.`,
 
 			try {
 				const prompt = buildPrompt(PLAN_REVIEWER_PROMPT, activeProfiles);
-				const result = await runSubAgent(model, prompt, `# Plan Review Request\n\n${params.plan}`, authStorage, modelRegistry, ctx.cwd);
+				const result = await runSubAgent(model, prompt, `# Plan Review Request\n\n${params.plan}`, authStorage, modelRegistry, ctx.cwd ?? process.cwd());
 				return {
 					content: [{ type: "text", text: result }],
 					details: { verdict: parseVerdict(result), type: "plan", profiles: profileNames },
@@ -344,7 +346,7 @@ Pass the plan text, list of created/modified file paths, and optionally the Open
 
 			try {
 				const reviewerSystemPrompt = buildPrompt(CODE_REVIEWER_PROMPT, activeProfiles);
-				const result = await runSubAgent(model, reviewerSystemPrompt, prompt, authStorage, modelRegistry, ctx.cwd);
+				const result = await runSubAgent(model, reviewerSystemPrompt, prompt, authStorage, modelRegistry, ctx.cwd ?? process.cwd());
 				return {
 					content: [{ type: "text", text: result }],
 					details: { verdict: parseVerdict(result), filesReviewed: files.length, hasSpecs: !!specsDir, profiles: profileNames },
