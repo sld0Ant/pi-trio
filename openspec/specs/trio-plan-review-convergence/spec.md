@@ -1,7 +1,8 @@
 # trio-plan-review-convergence Specification
 
 ## Purpose
-TBD - created by archiving change improve-trio-os-review-convergence. Update Purpose after archive.
+Defines OpenSpec-aware plan review convergence for trio-os workflows, including review-depth controls, approvable verdict semantics, OpenSpec review-pack construction, strict validation evidence, baseline spec context, and managed OpenSpec reviewer-profile behavior.
+
 ## Requirements
 ### Requirement: Support review depth for plan reviews
 The plan-review tool SHALL allow callers to specify how aggressively the independent reviewer searches for issues.
@@ -38,95 +39,73 @@ The plan reviewer SHALL distinguish blocked plans from approvable plans with not
 - **THEN** the textual verdict is `APPROVED`
 - **AND** the tool details map the result to `PASS`
 
-#### Scenario: Legacy verdicts remain supported
-- **WHEN** a reviewer response contains legacy `PASS` or `NEEDS WORK`
-- **THEN** verdict parsing continues to map `PASS` to `PASS`
-- **AND** `NEEDS WORK` maps to `NEEDS WORK`
+### Requirement: Plan review tool SHALL support OpenSpec review packs
+The plan-review tool SHALL build a deterministic OpenSpec review pack when requested.
 
-#### Scenario: Unknown verdicts are not approvable
-- **WHEN** a reviewer response does not contain a known verdict
-- **THEN** tool details include `rawVerdict: "UNKNOWN"`
-- **AND** the compatibility verdict maps to `NEEDS WORK`
+#### Scenario: OpenSpec mode builds pack from change directory
+- **WHEN** `trio_plan_review` is called with `mode: "openspec"` and a valid `change_dir`
+- **THEN** the tool resolves the change directory under `openspec/changes/`
+- **AND** includes `proposal.md`, `design.md`, `tasks.md`, and markdown delta specs under `specs/` in deterministic order
+- **AND** missing core artifacts are represented in the pack instead of crashing the tool
 
-### Requirement: Build OpenSpec review packs
-The plan-review tool SHALL be able to review an OpenSpec change from its artifact directory instead of requiring the caller to manually concatenate files.
+#### Scenario: OpenSpec validation is included
+- **WHEN** OpenSpec mode builds a review pack
+- **THEN** the tool runs `openspec validate <change> --strict` when the CLI is available
+- **AND** captures bounded stdout, stderr, exit state, timeout, or not-run state in the pack
 
-#### Scenario: OpenSpec mode reads change artifacts
-- **WHEN** `trio_plan_review` is called with `plan: ""`, `mode: "openspec"`, and `change_dir`
-- **THEN** the tool verifies the canonical `change_dir` is exactly one directory level below the repository `openspec/changes` root
-- **AND** the review prompt includes `proposal.md`, `design.md`, `tasks.md`, and regular markdown delta specs under `specs/`
-- **AND** symlinks or files escaping the allowed OpenSpec roots are skipped or reported
-- **AND** missing optional artifacts are represented in the pack instead of crashing the tool
+#### Scenario: Baseline specs are included when relevant
+- **WHEN** delta spec capability directories exist under the change `specs/` directory
+- **THEN** corresponding baseline specs from `openspec/specs/<capability>/spec.md` are included when present
+- **AND** missing baseline specs are reported rather than crashing the tool
 
-#### Scenario: Baseline specs are included when discoverable
-- **WHEN** OpenSpec mode has `include_baseline_specs` enabled or omitted
-- **THEN** relevant baseline specs under `openspec/specs/<capability>/spec.md` are included when they can be discovered from delta spec directories under `specs/<capability>/`
-- **AND** missing baseline specs are reported as unavailable rather than failing the tool
+#### Scenario: Review settings are visible
+- **WHEN** the OpenSpec review pack is built
+- **THEN** it includes review depth, mode, review scope, stop condition, non-goals, and approvable stop truth table
 
-#### Scenario: OpenSpec validation result is included
-- **WHEN** the OpenSpec CLI is available
-- **THEN** the review pack includes the command and output for `openspec validate <change> --strict`, where `<change>` is the verified canonical one-level child directory name under `openspec/changes/`
-- **AND** validation runs without a shell from the repository root with bounded runtime and bounded captured output
-- **AND** failed validation output is included in the pack
+### Requirement: Plan review tool SHALL remain backward compatible for generic calls
+Existing direct plan-review usage SHALL continue to work without OpenSpec mode.
 
-#### Scenario: Missing OpenSpec CLI does not crash review
-- **WHEN** the OpenSpec CLI is not available
-- **THEN** the review pack marks validation as not run
-- **AND** the review still proceeds with available artifacts
+#### Scenario: Generic plan review uses supplied plan
+- **WHEN** `trio_plan_review` is called with only a `plan` string
+- **THEN** the tool reviews that plan without requiring OpenSpec artifacts
+- **AND** does not apply OpenSpec review-pack behavior
 
-#### Scenario: Direct plan review remains backward compatible
-- **WHEN** `trio_plan_review` is called with only `plan`
-- **THEN** the tool reviews the provided plan text as before
-- **AND** no OpenSpec file reading is required
+#### Scenario: Invalid review options are rejected
+- **WHEN** callers provide invalid review depth or mode values
+- **THEN** tool schema validation rejects those values
 
-### Requirement: Include review scope and stop condition in OpenSpec reviews
-OpenSpec review packs SHALL tell the reviewer what to review, what not to review, and when planning may stop.
+### Requirement: trio-os prompt SHALL use OpenSpec plan review convergence
+The trio-os workflow SHALL call OpenSpec-aware plan review and stop when the approved stop condition is met.
 
-#### Scenario: Review scope is explicit
-- **WHEN** an OpenSpec review pack is built
-- **THEN** it includes a review scope focused on blockers, contradictions, source-boundary conflicts, OpenSpec traceability, and unsafe undefined behavior inside the stated scope
-- **AND** it excludes future slices, unrelated architecture alternatives, docs-site work unless in scope, and exhaustive hardening outside accepted trade-offs
+#### Scenario: Initial plan review uses OpenSpec mode
+- **WHEN** trio-os completes OpenSpec proposal artifacts
+- **THEN** it calls `trio_plan_review` with `plan: ""`, `mode: "openspec"`, `change_dir`, and `review_depth: "critical_and_important"`
+- **AND** it does not pass `tasks.md` alone as the review plan
 
-#### Scenario: Stop condition is explicit
-- **WHEN** an OpenSpec review pack is built
-- **THEN** it states that strict OpenSpec validation plus no Critical findings makes the plan approvable
+#### Scenario: Confirmation review can be critical-only
+- **WHEN** Critical issues from plan review are fixed
+- **THEN** trio-os may call `trio_plan_review` with `review_depth: "critical_only"` for confirmation
 
-#### Scenario: Caller-provided scope can be included
-- **WHEN** `review_scope` or `stop_condition` parameters are provided
-- **THEN** the review pack includes those caller-provided values
-
-### Requirement: Make trio-os use OpenSpec review packs
-The trio-os workflow prompt SHALL instruct agents to review OpenSpec changes as artifact packs and stop review when Critical findings are gone.
-
-#### Scenario: Initial trio-os plan review uses full pack
-- **WHEN** `/trio-os` reaches plan review after proposal/design/spec/tasks creation
-- **THEN** it instructs the agent to call `trio_plan_review` with `plan: ""`, `mode: "openspec"`, the change directory, and `review_depth: "critical_and_important"`
-- **AND** it does not instruct the agent to review `tasks.md` alone
-
-#### Scenario: Confirmation review is critical-only
-- **WHEN** Critical findings have been fixed after an initial OpenSpec plan review
-- **THEN** `/trio-os` instructs the agent to use `review_depth: "critical_only"` for confirmation review
-
-#### Scenario: Critical-free review stops planning
+#### Scenario: Stop condition recognizes approvable verdicts
 - **WHEN** strict OpenSpec validation passes
-- **AND** confirmation review raw verdict is `APPROVABLE_WITH_NOTES`, `APPROVED`, or legacy `PASS`
-- **THEN** `/trio-os` instructs the agent to stop plan review
-- **AND** present artifacts to the user for implementation approval
+- **AND** the raw plan-review verdict is `APPROVABLE_WITH_NOTES`, `APPROVED`, or legacy `PASS`
+- **THEN** trio-os stops plan review and presents artifacts for implementation approval
 
-#### Scenario: Unknown or blocked verdict continues planning
-- **WHEN** confirmation review raw verdict is `BLOCKED`, `NEEDS WORK`, or `UNKNOWN`
-- **THEN** `/trio-os` does not treat the plan as approved
-- **AND** it continues fixing or asks the user for guidance
+#### Scenario: Blocking verdicts continue planning
+- **WHEN** validation fails or raw verdict is `BLOCKED`, `NEEDS WORK`, or `UNKNOWN`
+- **THEN** trio-os continues fixing or asks the user for guidance
 
-### Requirement: Keep OpenSpec profile compatible with verification gates
-The OpenSpec reviewer profile SHALL allow clearly separated verification gates without treating them as incomplete implementation tasks.
+### Requirement: OpenSpec reviewer profile SHALL support plan-review convergence
+The managed OpenSpec reviewer profile SHALL align with review depth and stop conditions.
 
-#### Scenario: Verification gates are not implementation checklist tasks
-- **WHEN** tasks or plan packs clearly separate verification gates from implementation tasks
-- **THEN** the reviewer does not require each verification gate to map to a concrete code change
-- **AND** implementation checklist items still require traceability to specs and design
+#### Scenario: Profile respects review depth
+- **WHEN** an OpenSpec plan review pack includes a review depth
+- **THEN** the OpenSpec reviewer profile applies that depth to its findings
 
-#### Scenario: Accepted trade-offs are respected
-- **WHEN** a plan pack states accepted trade-offs and non-goals
-- **THEN** the reviewer does not relitigate them as Critical unless they contradict requirements or source boundary
+#### Scenario: Trade-offs and non-goals are respected
+- **WHEN** accepted trade-offs or explicitly scoped non-goals are present
+- **THEN** the reviewer does not classify them as Critical unless they contradict requirements or source boundary
 
+#### Scenario: Verification gates are not implementation tasks
+- **WHEN** OpenSpec artifacts clearly separate verification gates from implementation checklist tasks
+- **THEN** the reviewer does not treat those gates as implementation tasks solely because they are listed separately

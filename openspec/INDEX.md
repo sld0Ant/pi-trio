@@ -12,6 +12,55 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 
 ## Baseline Specs
 
+### openspec-trace-cli-commit
+- Status: baseline
+- Path: `openspec/specs/openspec-trace-cli-commit/spec.md`
+- Summary: Defines `openspec-trace` commit message generation and validation for `OpenSpec-Change` trailers.
+- Related changes:
+  - `add-openspec-trace-commit-cli`
+  - `add-openspec-traceability-index`
+- Key decisions:
+  - `commit-msg` emits caller-provided titles plus ordered trailers.
+  - `check-commit-msg` rejects malformed trailers, duplicates, unknown changes, and dated archive folder ids.
+  - Non-OpenSpec commits can be checked without requiring a trailer.
+
+### openspec-trace-cli-index
+- Status: baseline
+- Path: `openspec/specs/openspec-trace-cli-index/spec.md`
+- Summary: Defines `openspec-trace index` commands for active/archive card maintenance and index validation.
+- Related changes:
+  - `add-openspec-trace-index-cli`
+  - `add-openspec-traceability-index`
+  - `repair-openspec-traceability-index`
+- Key decisions:
+  - Active cards are generated idempotently from OpenSpec artifacts while preserving human-owned fields.
+  - Archive updates require exactly one matching dated archive directory.
+  - Validation checks consistency, compactness thresholds, full artifact dumps, placeholders, and pending commits.
+
+### openspec-trace-cli-review-pack
+- Status: baseline
+- Path: `openspec/specs/openspec-trace-cli-review-pack/spec.md`
+- Summary: Defines `openspec-trace review-pack` metadata generation for `trio_review` handoffs.
+- Related changes:
+  - `add-openspec-trace-review-pack-cli`
+  - `add-openspec-trace-status-cli`
+- Key decisions:
+  - Review packs include plan path, absolute reviewed files, specs directory, validation summary, and pending post-review tasks.
+  - Default discovery includes staged, unstaged, and untracked files.
+  - Deleted files are reported separately and not passed as reviewed file paths.
+
+### openspec-trace-cli-tasks
+- Status: baseline
+- Path: `openspec/specs/openspec-trace-cli-tasks/spec.md`
+- Summary: Defines `openspec-trace` task helpers for command-backed factual checkbox updates, explicit marking, and phase readiness checks.
+- Related changes:
+  - `add-openspec-trace-task-runner-cli`
+  - `require-trace-task-helper-updates`
+- Key decisions:
+  - `run` marks exact task ids only after the command exits successfully.
+  - `tasks mark` is explicit and does not infer post-review task ids.
+  - `tasks check` reports pre-review and post-review readiness using heading-based phase heuristics.
+
 ### openspec-traceability
 - Status: baseline
 - Path: `openspec/specs/openspec-traceability/spec.md`
@@ -37,6 +86,18 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
   - Status is read-only and reports failures through output and exit codes.
   - Changed files come from staged, unstaged, and untracked working-tree paths.
   - JSON output uses a stable v1 shape with per-check states.
+
+### trio-plan-review-convergence
+- Status: baseline
+- Path: `openspec/specs/trio-plan-review-convergence/spec.md`
+- Summary: Defines OpenSpec-aware plan review convergence with review-depth controls, approvable verdicts, OpenSpec review packs, strict validation evidence, baseline spec context, and managed OpenSpec reviewer-profile behavior.
+- Related changes:
+  - `improve-trio-os-review-convergence`
+  - `manage-openspec-review-profile`
+- Key decisions:
+  - Plan review can stop when strict OpenSpec validation passes and the raw verdict is approvable.
+  - OpenSpec review packs include proposal, design, tasks, delta specs, relevant baseline specs, settings, and validation output.
+  - `rawVerdict` preserves reviewer wording while compatibility verdicts map approvable states to `PASS`.
 
 ### trio-reviewer-diagnostics
 - Status: baseline
