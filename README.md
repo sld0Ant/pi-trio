@@ -79,6 +79,15 @@ bun scripts/openspec-trace.ts tasks check add-example-change --phase pre-review
 
 `run` executes the command as argv without shell interpolation, marks the exact task only after exit status `0`, leaves failed tasks unchanged, and reports missing or ambiguous task ids without mutation. `tasks check` is read-only and reports `pre-review` or `post-review` readiness from heading-based task phases.
 
+The helper can report read-only OpenSpec workflow status:
+
+```bash
+bun scripts/openspec-trace.ts status add-example-change --phase pre-review
+bun scripts/openspec-trace.ts status add-example-change --phase commit --json
+```
+
+`status` checks change/artifact presence, strict OpenSpec validation, working-tree source-boundary drift, task readiness, archive state, and commit-trailer readiness. It uses exit `0` for pass, `1` for failed gates, and `2` for invalid usage or repository errors. JSON output uses a stable v1 shape with `changeId`, `phase`, `resolvedState`, `exitState`, and `checks`.
+
 If an OpenSpec project is missing `openspec/INDEX.md`, `/trio-os` asks whether to create the index first, continue without it for the current task, or skip the prompt for the current session. The canonical dedicated prompt-template command for index bootstrap or repair is `/trio-os-make-index`; users asking for `/trio-os:make_index` mean this workflow, but no runtime alias is provided by default.
 
 ## What's inside
