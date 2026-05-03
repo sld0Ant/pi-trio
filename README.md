@@ -88,6 +88,16 @@ bun scripts/openspec-trace.ts status add-example-change --phase commit --json
 
 `status` checks change/artifact presence, strict OpenSpec validation, working-tree source-boundary drift, task readiness, archive state, and commit-trailer readiness. It uses exit `0` for pass, `1` for failed gates, and `2` for invalid usage or repository errors. JSON output uses a stable v1 shape with `changeId`, `phase`, `resolvedState`, `exitState`, and `checks`.
 
+The helper can maintain the traceability index:
+
+```bash
+bun scripts/openspec-trace.ts index add-active add-example-change
+bun scripts/openspec-trace.ts index archive add-example-change
+bun scripts/openspec-trace.ts index validate
+```
+
+`index add-active` creates or updates compact active cards, `index archive` moves or creates archived cards after `openspec archive`, and `index validate` checks active/archive card consistency plus deterministic compactness rules. Generated placeholders use the `TODO(index):` prefix; human-authored summary, related changes, and key decisions are preserved when possible.
+
 If an OpenSpec project is missing `openspec/INDEX.md`, `/trio-os` asks whether to create the index first, continue without it for the current task, or skip the prompt for the current session. The canonical dedicated prompt-template command for index bootstrap or repair is `/trio-os-make-index`; users asking for `/trio-os:make_index` mean this workflow, but no runtime alias is provided by default.
 
 ## What's inside

@@ -90,22 +90,6 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 - Archive path: pending
 - Commit: `6d2112a`
 
-### add-openspec-trace-index-cli
-- Status: proposed-future
-- Capability:
-  - openspec-trace-cli-index
-- Summary: Future CLI commands to add, archive, and validate `openspec/INDEX.md` cards.
-- Source boundary: pending implementation plan
-- Related changes:
-  - `add-openspec-traceability-index`
-  - `repair-openspec-traceability-index`
-- Key decisions:
-  - Depends on this index contract existing first.
-  - Human-owned fields should be preserved where possible.
-  - Compactness checks should be deterministic.
-- Archive path: pending
-- Commit: pending
-
 ### add-openspec-trace-review-pack-cli
 - Status: proposed-future
 - Capability:
@@ -145,48 +129,6 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 - Archive path: `openspec/changes/archive/2026-05-03-add-openspec-trace-status-cli/`
 - Commit: pending
 
-### add-openspec-trace-task-runner-cli
-- Status: archived
-- Capability:
-  - openspec-trace-cli-tasks
-- Summary: Adds `openspec-trace` task helpers for command-backed factual checkbox updates, explicit task marking, and phase readiness checks.
-- Source boundary:
-  - `scripts/openspec-trace.ts`
-  - `README.md`
-  - `CHANGELOG.md`
-- Related changes:
-  - `add-openspec-traceability-index`
-  - `add-openspec-trace-commit-cli`
-  - `add-openspec-trace-status-cli`
-- Key decisions:
-  - Commands run as argv without shell interpolation by default.
-  - Task ids are exact dot-separated numeric identifiers; prefix matches do not count.
-  - Failed commands propagate the command exit status and do not mutate `tasks.md`.
-  - `tasks check` reports `pre-review` and `post-review` readiness using heading-based phase heuristics.
-- Archive path: `openspec/changes/archive/2026-05-03-add-openspec-trace-task-runner-cli/`
-- Commit: pending
-
-### add-trio-reviewer-diagnostics
-- Status: archived
-- Capability:
-  - trio-reviewer-diagnostics
-- Summary: Adds local timing diagnostics, progress updates, safe JSON logs, and diagnostic detail fields for trio reviewer tools.
-- Source boundary:
-  - `extensions/trio-reviewer/index.ts`
-  - `README.md`
-  - `CHANGELOG.md`
-- Related changes:
-  - `improve-trio-os-review-convergence`
-  - `manage-openspec-review-profile`
-  - `implement-trio-workflow-process-contract`
-- Key decisions:
-  - Diagnostics use local logs with private permissions where supported and unique timestamp/UUID filenames.
-  - Default logs omit raw prompts, file contents, review packs, and model responses.
-  - Raw logs are opt-in via `TRIO_REVIEW_LOG_RAW=1`, limited by UTF-8 bytes, and marked with truncation metadata.
-  - Tool details include `durationMs`, `logPath`, and `diagnosticWarnings` while preserving existing verdict/profile fields.
-- Archive path: `openspec/changes/archive/2026-05-03-add-trio-reviewer-diagnostics/`
-- Commit: pending
-
 ### add-openspec-trace-commit-cli
 - Status: archived
 - Capability:
@@ -207,21 +149,41 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 - Archive path: `openspec/changes/archive/2026-05-03-add-openspec-trace-commit-cli/`
 - Commit: pending
 
-### repair-openspec-traceability-index
+### add-openspec-trace-index-cli
 - Status: archived
 - Capability:
-  - openspec-traceability
-- Summary: Repairs this index so it reflects currently present baseline specs, active changes, archived changes, and verified known commits.
-- Source boundary:
-  - `openspec/INDEX.md`
+  - openspec-trace-cli-index
+- Summary: Future CLI commands to add, archive, and validate `openspec/INDEX.md` cards.
+- Source boundary: pending
 - Related changes:
   - `add-openspec-traceability-index`
-  - `prompt-for-openspec-index-bootstrap`
+  - `repair-openspec-traceability-index`
 - Key decisions:
-  - Repair uses current OpenSpec tree as source of truth.
-  - Known commits are verified before use; unknown commits remain pending.
-  - Moving archived/completed changes means index classification/card placement only before archive.
-- Archive path: `openspec/changes/archive/2026-05-03-repair-openspec-traceability-index/`
+  - Depends on this index contract existing first.
+  - Human-owned fields should be preserved where possible.
+  - Compactness checks should be deterministic.
+- Archive path: `openspec/changes/archive/2026-05-03-add-openspec-trace-index-cli/`
+- Commit: pending
+
+### add-openspec-trace-task-runner-cli
+- Status: archived
+- Capability:
+  - openspec-trace-cli-tasks
+- Summary: Adds `openspec-trace` task helpers for command-backed factual checkbox updates, explicit task marking, and phase readiness checks.
+- Source boundary:
+  - `scripts/openspec-trace.ts`
+  - `README.md`
+  - `CHANGELOG.md`
+- Related changes:
+  - `add-openspec-traceability-index`
+  - `add-openspec-trace-commit-cli`
+  - `add-openspec-trace-status-cli`
+- Key decisions:
+  - Commands run as argv without shell interpolation by default.
+  - Task ids are exact dot-separated numeric identifiers; prefix matches do not count.
+  - Failed commands propagate the command exit status and do not mutate `tasks.md`.
+  - `tasks check` reports `pre-review` and `post-review` readiness using heading-based phase heuristics.
+- Archive path: `openspec/changes/archive/2026-05-03-add-openspec-trace-task-runner-cli/`
 - Commit: pending
 
 ### add-openspec-traceability-index
@@ -247,28 +209,26 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 - Archive path: `openspec/changes/archive/2026-05-03-add-openspec-traceability-index/`
 - Commit: `a7311b4`
 
-### prompt-for-openspec-index-bootstrap
+### add-trio-reviewer-diagnostics
 - Status: archived
 - Capability:
-  - openspec-traceability
-  - trio-workflow-process-contract
-- Summary: Adds missing-index user choice behavior and the canonical `/trio-os-make-index` prompt workflow for explicit traceability index bootstrap or repair.
+  - trio-reviewer-diagnostics
+- Summary: Adds local timing diagnostics, progress updates, safe JSON logs, and diagnostic detail fields for trio reviewer tools.
 - Source boundary:
-  - `prompts/trio-os.md`
-  - `prompts/trio-os-make-index.md`
+  - `extensions/trio-reviewer/index.ts`
   - `README.md`
   - `CHANGELOG.md`
-  - `openspec/INDEX.md`
 - Related changes:
-  - `add-openspec-traceability-index`
+  - `improve-trio-os-review-convergence`
+  - `manage-openspec-review-profile`
   - `implement-trio-workflow-process-contract`
 - Key decisions:
-  - Missing traceability index prompts the user before proposal creation.
-  - Non-interactive, ambiguous, or no-selection fallback continues without index and does not create it.
-  - `/trio-os-make-index` is the canonical prompt-template command; `/trio-os:make_index` is intent wording, not a runtime alias.
-  - Make-index workflow uses normal OpenSpec and review gates and does not mix unrelated feature work.
-- Archive path: `openspec/changes/archive/2026-05-03-prompt-for-openspec-index-bootstrap/`
-- Commit: `e8c7334`
+  - Diagnostics use local logs with private permissions where supported and unique timestamp/UUID filenames.
+  - Default logs omit raw prompts, file contents, review packs, and model responses.
+  - Raw logs are opt-in via `TRIO_REVIEW_LOG_RAW=1`, limited by UTF-8 bytes, and marked with truncation metadata.
+  - Tool details include `durationMs`, `logPath`, and `diagnosticWarnings` while preserving existing verdict/profile fields.
+- Archive path: `openspec/changes/archive/2026-05-03-add-trio-reviewer-diagnostics/`
+- Commit: pending
 
 ### implement-trio-workflow-process-contract
 - Status: archived
@@ -311,3 +271,43 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
   - Managed profiles are added per invocation and do not mutate session `activeProfiles`.
 - Archive path: `openspec/changes/archive/2026-05-03-manage-openspec-review-profile/`
 - Commit: `1e375b4`
+
+### prompt-for-openspec-index-bootstrap
+- Status: archived
+- Capability:
+  - openspec-traceability
+  - trio-workflow-process-contract
+- Summary: Adds missing-index user choice behavior and the canonical `/trio-os-make-index` prompt workflow for explicit traceability index bootstrap or repair.
+- Source boundary:
+  - `prompts/trio-os.md`
+  - `prompts/trio-os-make-index.md`
+  - `README.md`
+  - `CHANGELOG.md`
+  - `openspec/INDEX.md`
+- Related changes:
+  - `add-openspec-traceability-index`
+  - `implement-trio-workflow-process-contract`
+- Key decisions:
+  - Missing traceability index prompts the user before proposal creation.
+  - Non-interactive, ambiguous, or no-selection fallback continues without index and does not create it.
+  - `/trio-os-make-index` is the canonical prompt-template command; `/trio-os:make_index` is intent wording, not a runtime alias.
+  - Make-index workflow uses normal OpenSpec and review gates and does not mix unrelated feature work.
+- Archive path: `openspec/changes/archive/2026-05-03-prompt-for-openspec-index-bootstrap/`
+- Commit: `e8c7334`
+
+### repair-openspec-traceability-index
+- Status: archived
+- Capability:
+  - openspec-traceability
+- Summary: Repairs this index so it reflects currently present baseline specs, active changes, archived changes, and verified known commits.
+- Source boundary:
+  - `openspec/INDEX.md`
+- Related changes:
+  - `add-openspec-traceability-index`
+  - `prompt-for-openspec-index-bootstrap`
+- Key decisions:
+  - Repair uses current OpenSpec tree as source of truth.
+  - Known commits are verified before use; unknown commits remain pending.
+  - Moving archived/completed changes means index classification/card placement only before archive.
+- Archive path: `openspec/changes/archive/2026-05-03-repair-openspec-traceability-index/`
+- Commit: pending
