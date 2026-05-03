@@ -25,6 +25,19 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
   - Missing index setup requires user selection or explicit make-index workflow invocation.
   - Unknown commit hashes may remain `pending` when commit trailers provide the primary link.
 
+### trio-reviewer-diagnostics
+- Status: baseline
+- Path: `openspec/specs/trio-reviewer-diagnostics/spec.md`
+- Summary: Defines local reviewer diagnostics for `trio_plan_review` and `trio_review`, including safe timing logs, private permissions, raw logging safeguards, diagnostic details, and progress/fallback behavior.
+- Related changes:
+  - `add-trio-reviewer-diagnostics`
+  - `improve-trio-os-review-convergence`
+  - `manage-openspec-review-profile`
+- Key decisions:
+  - Default logs are metadata-only and local under `/tmp/pi-trio-review-logs` unless `TRIO_REVIEW_LOG_DIR` is set.
+  - Raw prompt/model capture requires `TRIO_REVIEW_LOG_RAW=1` and is byte-bounded with truncation metadata.
+  - Logging failures become diagnostic warnings and do not fail reviews.
+
 ### trio-workflow-process-contract
 - Status: baseline
 - Path: `openspec/specs/trio-workflow-process-contract/spec.md`
@@ -128,6 +141,27 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 - Commit: pending
 
 ## Archived Changes
+
+### add-trio-reviewer-diagnostics
+- Status: archived
+- Capability:
+  - trio-reviewer-diagnostics
+- Summary: Adds local timing diagnostics, progress updates, safe JSON logs, and diagnostic detail fields for trio reviewer tools.
+- Source boundary:
+  - `extensions/trio-reviewer/index.ts`
+  - `README.md`
+  - `CHANGELOG.md`
+- Related changes:
+  - `improve-trio-os-review-convergence`
+  - `manage-openspec-review-profile`
+  - `implement-trio-workflow-process-contract`
+- Key decisions:
+  - Diagnostics use local logs with private permissions where supported and unique timestamp/UUID filenames.
+  - Default logs omit raw prompts, file contents, review packs, and model responses.
+  - Raw logs are opt-in via `TRIO_REVIEW_LOG_RAW=1`, limited by UTF-8 bytes, and marked with truncation metadata.
+  - Tool details include `durationMs`, `logPath`, and `diagnosticWarnings` while preserving existing verdict/profile fields.
+- Archive path: `openspec/changes/archive/2026-05-03-add-trio-reviewer-diagnostics/`
+- Commit: pending
 
 ### add-openspec-trace-commit-cli
 - Status: archived
