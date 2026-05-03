@@ -110,6 +110,16 @@ Verification notes, smoke reports, and audit logs must record completed facts on
 
 Run validation tools only on artifact kinds they are intended to validate. Do not run language-specific linters on unrelated prose or specification artifacts unless that tool explicitly supports them.
 
+### Commit Traceability
+
+For commits implementing an OpenSpec change, include a commit trailer:
+
+```text
+OpenSpec-Change: <change-id>
+```
+
+Use the original active change id, not the dated archive folder name. If one commit intentionally covers multiple OpenSpec changes, include one `OpenSpec-Change:` trailer per change or split the work into separate commits.
+
 ## Code Standards
 
 - Follow existing project code style (indentation, quotes, naming conventions)

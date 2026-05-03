@@ -7,10 +7,13 @@
 - Plan review depth controls: `critical_only`, `critical_and_important`, and `exhaustive`
 - OpenSpec review packs for `trio_plan_review` via `mode: "openspec"` and `change_dir`
 - Approvable plan-review verdicts: `BLOCKED`, `APPROVABLE_WITH_NOTES`, and `APPROVED`
+- OpenSpec traceability index and `OpenSpec-Change` commit trailer workflow
+- `/trio-os-make-index` prompt workflow for explicit OpenSpec traceability index bootstrap or repair
 
 ### Changed
 
 - `/trio-os` reviews full OpenSpec artifact packs instead of `tasks.md` alone and stops planning when strict validation passes with no Critical findings
+- `/trio-os` now asks before bootstrapping a missing `openspec/INDEX.md` and can continue without the index when requested
 - Executor/reviewer instructions now document trio-os source-boundary amendments, factual task status, complete review handoffs, workflow-gate handling, and severity calibration
 - The built-in `openspec` reviewer profile is now managed by review context: hidden from the picker, excluded from generic reviews, and applied automatically for OpenSpec reviews
 
