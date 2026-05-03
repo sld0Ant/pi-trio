@@ -138,6 +138,29 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 - Archive path: pending
 - Commit: pending
 
+### prompt-for-openspec-index-bootstrap
+- Status: active
+- Capability:
+  - openspec-traceability
+  - trio-workflow-process-contract
+- Summary: Adds missing-index user choice behavior and the canonical `/trio-os-make-index` prompt workflow for explicit traceability index bootstrap or repair.
+- Source boundary:
+  - `prompts/trio-os.md`
+  - `prompts/trio-os-make-index.md`
+  - `README.md`
+  - `CHANGELOG.md`
+  - `openspec/INDEX.md`
+- Related changes:
+  - `add-openspec-traceability-index`
+  - `implement-trio-workflow-process-contract`
+- Key decisions:
+  - Missing traceability index prompts the user before proposal creation.
+  - Non-interactive, ambiguous, or no-selection fallback continues without index and does not create it.
+  - `/trio-os-make-index` is the canonical prompt-template command; `/trio-os:make_index` is intent wording, not a runtime alias.
+  - Make-index workflow uses normal OpenSpec and review gates and does not mix unrelated feature work.
+- Archive path: pending
+- Commit: pending
+
 ### add-openspec-trace-task-runner-cli
 - Status: proposed-future
 - Capability:

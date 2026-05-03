@@ -16,6 +16,13 @@ Then initialize in the project if needed: `openspec init --tools pi`
 **Phase 1 — OpenSpec Propose** (load skill `openspec`):
 Read the openspec skill. If `openspec/INDEX.md` exists, read it before creating a new proposal. Use it as a compact navigation aid for prior changes and decisions.
 
+If `openspec/` exists but `openspec/INDEX.md` is missing, ask the user how to proceed before creating the proposal:
+1. **Create traceability index first** — pause the current feature planning flow, start a separate OpenSpec change for traceability index bootstrap, and return to the original task after that workflow completes.
+2. **Continue without index for this task** — proceed with normal OpenSpec discovery for this task only and do not create `openspec/INDEX.md`.
+3. **Skip index prompt for this session** — proceed without the index and do not ask again in the current conversational/session context; do not write repository config or persistent settings.
+
+If the user cannot be asked, does not choose, or gives an ambiguous answer, continue without the index for the current task, note that traceability index setup was not selected, and do not create `openspec/INDEX.md`. Never create `openspec/INDEX.md` automatically unless the user chooses index creation, invokes `/trio-os-make-index`, or traceability/index setup is already in the approved scope.
+
 Load prior context selectively:
 - read relevant baseline specs when capabilities match the task scope or index cards;
 - read archived `proposal.md` and `design.md` only for directly related prior changes;

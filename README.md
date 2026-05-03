@@ -60,6 +60,8 @@ OpenSpec-Change: <change-id>
 
 If one commit intentionally covers multiple OpenSpec changes, include one trailer per change or split the commit.
 
+If an OpenSpec project is missing `openspec/INDEX.md`, `/trio-os` asks whether to create the index first, continue without it for the current task, or skip the prompt for the current session. The canonical dedicated prompt-template command for index bootstrap or repair is `/trio-os-make-index`; users asking for `/trio-os:make_index` mean this workflow, but no runtime alias is provided by default.
+
 ## What's inside
 
 | Resource | Path | Description |
