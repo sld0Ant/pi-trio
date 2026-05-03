@@ -12,7 +12,7 @@ pi install git:github.com/sld0Ant/pi-trio
 
 Everything is installed in one step — trio skills, prompts, the reviewer extension, and OpenSpec skill. No npm publishing required.
 
-For `/trio-os`, the OpenSpec CLI is also needed:
+For `/trio-os`, the OpenSpec CLI is also needed. Install it with your preferred package manager. For example, Bun users can run:
 
 ```bash
 bun add -g @fission-ai/openspec@latest
@@ -41,6 +41,12 @@ Trio integrated with OpenSpec (spec-driven development):
 4. **Executor** — implements according to tasks.md
 5. **Code Review** — sub-agent reviews code against both plan and OpenSpec specs
 6. Fix loop, then auto-archive the OpenSpec change
+
+#### Trio-OS process contract
+
+For OpenSpec-driven work, `tasks.md` is the implementation checklist and task status is factual: tasks are checked only after the action happened. Executors must stop and amend OpenSpec before editing outside an approved source boundary, and review handoffs should include all relevant modified source, docs, specs, verification artifacts, validation results, pending checks, and known limitations.
+
+Implementation review understands workflow gates: archive, baseline sync, commit, push, deploy, and release steps may remain pending until review passes. Reviewers distinguish required implementation failures from post-review tasks and calibrate findings as Critical, Important, or Suggestions within the approved scope.
 
 ## What's inside
 
@@ -115,7 +121,9 @@ Stop planning when strict OpenSpec validation passes and the raw verdict is `APP
 
 The reviewer uses profiles — checklists injected into the sub-agent's system prompt. On the first review call in a session, an interactive picker lets you toggle which profiles to apply.
 
-Built-in profiles: `nuxt`, `vue-spa`, `vue-lib`, `vue-testing`, `monorepo`, `docs`, `openspec`.
+Built-in selectable profiles: `nuxt`, `vue-spa`, `vue-lib`, `vue-testing`, `monorepo`, `docs`.
+
+The `openspec` profile is managed by the reviewer extension. It is hidden from the picker, is not applied to generic `/trio` reviews, and is applied automatically for OpenSpec review contexts (`trio_plan_review` with `mode: "openspec"` or `trio_review` with `specs_dir`).
 
 ### Custom profiles
 
