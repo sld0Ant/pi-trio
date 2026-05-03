@@ -60,6 +60,15 @@ OpenSpec-Change: <change-id>
 
 If one commit intentionally covers multiple OpenSpec changes, include one trailer per change or split the commit.
 
+The local trace helper can generate and validate commit messages:
+
+```bash
+bun scripts/openspec-trace.ts commit-msg add-openspec-trace-commit-cli --title "feat: add trace commit helper"
+bun scripts/openspec-trace.ts check-commit-msg .git/COMMIT_EDITMSG --change add-openspec-trace-commit-cli
+```
+
+It emits one `OpenSpec-Change:` trailer per change id, rejects duplicate trailers, validates lowercase kebab-case ids, and rejects dated archive folder names when the original change id can be inferred.
+
 If an OpenSpec project is missing `openspec/INDEX.md`, `/trio-os` asks whether to create the index first, continue without it for the current task, or skip the prompt for the current session. The canonical dedicated prompt-template command for index bootstrap or repair is `/trio-os-make-index`; users asking for `/trio-os:make_index` mean this workflow, but no runtime alias is provided by default.
 
 ## What's inside

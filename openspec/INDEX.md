@@ -111,21 +111,6 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 - Archive path: pending
 - Commit: pending
 
-### add-openspec-trace-commit-cli
-- Status: proposed-future
-- Capability:
-  - openspec-trace-cli-commit
-- Summary: Future CLI command to generate and validate commit messages with `OpenSpec-Change` trailers.
-- Source boundary: pending implementation plan
-- Related changes:
-  - `add-openspec-traceability-index`
-- Key decisions:
-  - Trailer grammar is `OpenSpec-Change: <change-id>`.
-  - Change ids use lowercase kebab-case.
-  - Dated archive folder names should be rejected when original ids are inferable.
-- Archive path: pending
-- Commit: pending
-
 ### add-openspec-trace-task-runner-cli
 - Status: proposed-future
 - Capability:
@@ -143,6 +128,26 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 - Commit: pending
 
 ## Archived Changes
+
+### add-openspec-trace-commit-cli
+- Status: archived
+- Capability:
+  - openspec-trace-cli-commit
+- Summary: Adds `openspec-trace` commit message generation and validation for `OpenSpec-Change` trailers.
+- Source boundary:
+  - `scripts/openspec-trace.ts`
+  - `package.json`
+  - `README.md`
+  - `CHANGELOG.md`
+- Related changes:
+  - `add-openspec-traceability-index`
+  - `repair-openspec-traceability-index`
+- Key decisions:
+  - `commit-msg` prints caller-provided titles and ordered trailers.
+  - `check-commit-msg` validates trailer syntax, duplicates, expected changes, unknown changes, and dated archive folder names.
+  - The helper is a local CLI/script wrapper, not a mandatory git hook.
+- Archive path: `openspec/changes/archive/2026-05-03-add-openspec-trace-commit-cli/`
+- Commit: pending
 
 ### repair-openspec-traceability-index
 - Status: archived

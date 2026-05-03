@@ -4,6 +4,12 @@
   "description": "Trio workflow for Pi: Planner → Executor → independent Reviewer sub-agent. Includes OpenSpec integration via /trio-os.",
   "keywords": ["pi-package"],
   "license": "MIT",
+  "bin": {
+    "openspec-trace": "scripts/openspec-trace.ts"
+  },
+  "scripts": {
+    "openspec-trace": "bun scripts/openspec-trace.ts"
+  },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",
     "@mariozechner/pi-ai": "*",
