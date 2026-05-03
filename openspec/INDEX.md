@@ -12,6 +12,19 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 
 ## Baseline Specs
 
+### openspec-traceability
+- Status: baseline
+- Path: `openspec/specs/openspec-traceability/spec.md`
+- Summary: Defines the compact OpenSpec index, selective prior-context loading, archive index updates, commit trailer traceability, missing-index prompt behavior, and make-index repair behavior.
+- Related changes:
+  - `add-openspec-traceability-index`
+  - `prompt-for-openspec-index-bootstrap`
+  - `repair-openspec-traceability-index`
+- Key decisions:
+  - `openspec/INDEX.md` is a navigation aid and must stay compact.
+  - Missing index setup requires user selection or explicit make-index workflow invocation.
+  - Unknown commit hashes may remain `pending` when commit trailers provide the primary link.
+
 ### trio-workflow-process-contract
 - Status: baseline
 - Path: `openspec/specs/trio-workflow-process-contract/spec.md`
@@ -20,6 +33,7 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
   - `implement-trio-workflow-process-contract`
   - `manage-openspec-review-profile`
   - `add-openspec-traceability-index`
+  - `prompt-for-openspec-index-bootstrap`
 - Key decisions:
   - OpenSpec artifacts are the implementation contract for trio-os work.
   - Post-review operations remain pending until after implementation review passes.
@@ -50,33 +64,6 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 - Archive path: pending
 - Commit: `6d2112a`
 
-### add-openspec-traceability-index
-- Status: active
-- Capability:
-  - openspec-traceability
-  - trio-workflow-process-contract
-- Summary: Adds this compact OpenSpec index, selective prior-context planning guidance, archive index updates, and `OpenSpec-Change` commit trailer workflow.
-- Source boundary:
-  - `prompts/trio-os.md`
-  - `skills/executor/SKILL.md`
-  - `README.md`
-  - `CHANGELOG.md`
-  - `openspec/INDEX.md`
-- Related changes:
-  - `implement-trio-workflow-process-contract`
-  - `manage-openspec-review-profile`
-  - `add-openspec-trace-status-cli`
-  - `add-openspec-trace-index-cli`
-  - `add-openspec-trace-review-pack-cli`
-  - `add-openspec-trace-commit-cli`
-  - `add-openspec-trace-task-runner-cli`
-- Key decisions:
-  - Planner should read this index first, then selectively load only relevant specs and archived proposal/design files.
-  - Archive workflow should update this index with compact cards.
-  - Commit trailer is the primary git-to-spec traceability link.
-- Archive path: pending
-- Commit: pending
-
 ### add-openspec-trace-status-cli
 - Status: proposed-future
 - Capability:
@@ -100,6 +87,7 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 - Source boundary: pending implementation plan
 - Related changes:
   - `add-openspec-traceability-index`
+  - `repair-openspec-traceability-index`
 - Key decisions:
   - Depends on this index contract existing first.
   - Human-owned fields should be preserved where possible.
@@ -138,8 +126,66 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 - Archive path: pending
 - Commit: pending
 
+### add-openspec-trace-task-runner-cli
+- Status: proposed-future
+- Capability:
+  - openspec-trace-cli-tasks
+- Summary: Future CLI command to run validation commands and mark task checkboxes complete only after command success.
+- Source boundary: pending implementation plan
+- Related changes:
+  - `add-openspec-traceability-index`
+  - `add-openspec-trace-status-cli`
+- Key decisions:
+  - Commands run as argv without shell interpolation by default.
+  - Task ids are dot-separated numeric identifiers.
+  - Failed commands do not mutate `tasks.md`.
+- Archive path: pending
+- Commit: pending
+
+## Archived Changes
+
+### repair-openspec-traceability-index
+- Status: archived
+- Capability:
+  - openspec-traceability
+- Summary: Repairs this index so it reflects currently present baseline specs, active changes, archived changes, and verified known commits.
+- Source boundary:
+  - `openspec/INDEX.md`
+- Related changes:
+  - `add-openspec-traceability-index`
+  - `prompt-for-openspec-index-bootstrap`
+- Key decisions:
+  - Repair uses current OpenSpec tree as source of truth.
+  - Known commits are verified before use; unknown commits remain pending.
+  - Moving archived/completed changes means index classification/card placement only before archive.
+- Archive path: `openspec/changes/archive/2026-05-03-repair-openspec-traceability-index/`
+- Commit: pending
+
+### add-openspec-traceability-index
+- Status: archived
+- Capability:
+  - openspec-traceability
+  - trio-workflow-process-contract
+- Summary: Adds the compact OpenSpec index, selective prior-context planning guidance, archive index updates, and `OpenSpec-Change` commit trailer workflow.
+- Source boundary:
+  - `prompts/trio-os.md`
+  - `skills/executor/SKILL.md`
+  - `README.md`
+  - `CHANGELOG.md`
+  - `openspec/INDEX.md`
+- Related changes:
+  - `implement-trio-workflow-process-contract`
+  - `manage-openspec-review-profile`
+  - `prompt-for-openspec-index-bootstrap`
+- Key decisions:
+  - Planner reads the index first, then selectively loads only relevant specs and archived proposal/design files.
+  - Archive workflow updates the index with compact cards.
+  - Commit trailer is the primary git-to-spec traceability link.
+- Archive path: `openspec/changes/archive/2026-05-03-add-openspec-traceability-index/`
+- Commit: `a7311b4`
+
 ### prompt-for-openspec-index-bootstrap
-- Status: active
+- Status: archived
 - Capability:
   - openspec-traceability
   - trio-workflow-process-contract
@@ -158,26 +204,8 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
   - Non-interactive, ambiguous, or no-selection fallback continues without index and does not create it.
   - `/trio-os-make-index` is the canonical prompt-template command; `/trio-os:make_index` is intent wording, not a runtime alias.
   - Make-index workflow uses normal OpenSpec and review gates and does not mix unrelated feature work.
-- Archive path: pending
-- Commit: pending
-
-### add-openspec-trace-task-runner-cli
-- Status: proposed-future
-- Capability:
-  - openspec-trace-cli-tasks
-- Summary: Future CLI command to run validation commands and mark task checkboxes complete only after command success.
-- Source boundary: pending implementation plan
-- Related changes:
-  - `add-openspec-traceability-index`
-  - `add-openspec-trace-status-cli`
-- Key decisions:
-  - Commands run as argv without shell interpolation by default.
-  - Task ids are dot-separated numeric identifiers.
-  - Failed commands do not mutate `tasks.md`.
-- Archive path: pending
-- Commit: pending
-
-## Archived Changes
+- Archive path: `openspec/changes/archive/2026-05-03-prompt-for-openspec-index-bootstrap/`
+- Commit: `e8c7334`
 
 ### implement-trio-workflow-process-contract
 - Status: archived
