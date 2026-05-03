@@ -48,6 +48,18 @@ For OpenSpec-driven work, `tasks.md` is the implementation checklist and task st
 
 Implementation review understands workflow gates: archive, baseline sync, commit, push, deploy, and release steps may remain pending until review passes. Reviewers distinguish required implementation failures from post-review tasks and calibrate findings as Critical, Important, or Suggestions within the approved scope.
 
+#### OpenSpec traceability
+
+Repositories may maintain `openspec/INDEX.md` as a compact navigation aid for active and archived changes. `/trio-os` reads the index before proposing new changes, then loads only relevant baseline specs or archived proposal/design files. Index cards should summarize status, capabilities, source boundaries, related changes, key decisions, archive paths, and commits without copying full specs or tasks.
+
+Commits implementing OpenSpec work should include a trailer using the original active change id:
+
+```text
+OpenSpec-Change: <change-id>
+```
+
+If one commit intentionally covers multiple OpenSpec changes, include one trailer per change or split the commit.
+
 ## What's inside
 
 | Resource | Path | Description |

@@ -14,13 +14,24 @@ Then initialize in the project if needed: `openspec init --tools pi`
 ## Workflow
 
 **Phase 1 — OpenSpec Propose** (load skill `openspec`):
-Read the openspec skill. Use `/opsx:propose` workflow to create the change:
+Read the openspec skill. If `openspec/INDEX.md` exists, read it before creating a new proposal. Use it as a compact navigation aid for prior changes and decisions.
+
+Load prior context selectively:
+- read relevant baseline specs when capabilities match the task scope or index cards;
+- read archived `proposal.md` and `design.md` only for directly related prior changes;
+- do not read archived `tasks.md`, full delta specs, or all archived changes by default.
+
+Treat prior context as related when it shares a capability, is explicitly linked by the index, touches the same source boundary or workflow behavior, is named by the user request, or creates a concrete dependency/conflict.
+
+Use `/opsx:propose` workflow to create the change:
 - proposal.md — why and what
 - design.md — technical approach
 - specs/ — delta-specs with requirements and scenarios
 - tasks.md — implementation checklist
 
-Ask for `tasks.md` sections that distinguish implementation, focused validation, review handoff, and post-review operations when applicable. Post-review operations include archive, baseline validation, commit, push, deploy, or release steps that must happen only after implementation review passes.
+When prior context is relevant, record it compactly in the new artifacts using sections such as `Related Changes` in `proposal.md` and `Prior Decisions Used` in `design.md`.
+
+Ask for `tasks.md` sections that distinguish implementation, focused validation, review handoff, and post-review operations when applicable. Post-review operations include updating `openspec/INDEX.md`, archive, baseline validation, commit, push, deploy, or release steps that must happen only after implementation review passes.
 
 After artifacts are created, call `trio_plan_review` with an OpenSpec review pack, not tasks.md alone:
 - `plan`: `""`
@@ -44,6 +55,6 @@ After implementation, call the `trio_review` tool:
 If verdict is NEEDS WORK — fix the issues and call `trio_review` again.
 If verdict is PASS — run `/opsx:archive` to merge delta-specs into main specs and archive the change.
 
-Run post-review operations only after implementation review passes. Record archive, baseline validation, commit, push, deploy, or release tasks as complete only after those actions happen.
+Run post-review operations only after implementation review passes. Update `openspec/INDEX.md` after archive when the repository uses the traceability index. Record archive, baseline validation, index update, commit, push, deploy, or release tasks as complete only after those actions happen. OpenSpec implementation commits should include `OpenSpec-Change: <change-id>` using the original active change id.
 
 Report the final result to the user.

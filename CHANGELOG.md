@@ -7,6 +7,7 @@
 - Plan review depth controls: `critical_only`, `critical_and_important`, and `exhaustive`
 - OpenSpec review packs for `trio_plan_review` via `mode: "openspec"` and `change_dir`
 - Approvable plan-review verdicts: `BLOCKED`, `APPROVABLE_WITH_NOTES`, and `APPROVED`
+- OpenSpec traceability index and `OpenSpec-Change` commit trailer workflow
 
 ### Changed
 
