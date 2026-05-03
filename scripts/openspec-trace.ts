@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
 const CHANGE_ID_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
@@ -70,6 +70,17 @@ type IndexSections = {
   afterArchived: string;
 };
 
+type ReviewPack = {
+  version: 1;
+  changeId: string;
+  plan: string;
+  files: string[];
+  specsDir: string | null;
+  deletedFiles: string[];
+  skippedFiles: Array<{ path: string; reason: string }>;
+  validationSummary: Array<{ command: string; exitCode: number | null; summary: string }>;
+  pendingPostReviewTasks: Array<{ id: string; text: string }>;
+};
 
 function main() {
   const [command, ...args] = Bun.argv.slice(2);
@@ -97,6 +108,11 @@ function main() {
 
     if (command === 'index') {
       handleIndexCommand(args);
+      return;
+    }
+
+    if (command === 'review-pack') {
+      printReviewPack(args);
       return;
     }
 
@@ -282,6 +298,138 @@ function checkTasks(args: string[]) {
   }
 
   process.exit(1);
+}
+
+function printReviewPack(args: string[]) {
+  const parsed = parseArgs(args);
+  const [changeId] = parsed.positionals;
+  const jsonOutput = parsed.options.has('json');
+
+  if (!changeId || parsed.positionals.length > 1) {
+    throw new Error('review-pack requires exactly one <change-id> argument');
+  }
+
+  assertAllowedOptions(parsed, ['json', 'staged', 'unstaged', 'all']);
+  const scopes = ['staged', 'unstaged', 'all'].filter(option => parsed.options.has(option));
+  if (scopes.length > 1) {
+    throw new Error('review-pack accepts only one of --staged, --unstaged, or --all');
+  }
+
+  const context = loadValidationContext(process.cwd());
+  validateChangeId(changeId, context);
+  if (!context.root) throw new Error('openspec root not found');
+
+  const taskFile = loadTaskFile(changeId, context);
+  const changePath = dirname(taskFile.path);
+  const specsDir = join(changePath, 'specs');
+  const discovery = discoverReviewPackFiles(context.root, changeId, (scopes[0] ?? 'all') as 'staged' | 'unstaged' | 'all');
+  const payload: ReviewPack = {
+    version: 1,
+    changeId,
+    plan: taskFile.path,
+    files: discovery.files.map(file => join(context.root as string, file)),
+    specsDir: existsSync(specsDir) ? specsDir : null,
+    deletedFiles: discovery.deletedFiles,
+    skippedFiles: discovery.skippedFiles,
+    validationSummary: reviewPackValidationSummary(changeId, context),
+    pendingPostReviewTasks: parseTasks(taskFile.content).filter(task => task.phase === 'post-review' && !task.complete).map(task => ({ id: task.id, text: task.text })),
+  };
+
+  if (jsonOutput) {
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+
+  printHumanReviewPack(payload);
+}
+
+function discoverReviewPackFiles(root: string, changeId: string, scope: 'staged' | 'unstaged' | 'all') {
+  const discovered = new Map<string, string>();
+  const deletedFiles = new Set<string>();
+  const skippedFiles = new Map<string, string>();
+  const includeStaged = scope === 'all' || scope === 'staged';
+  const includeUnstaged = scope === 'all' || scope === 'unstaged';
+
+  if (includeStaged) collectNameStatus(root, ['git', 'diff', '--name-status', '--cached'], discovered, deletedFiles);
+  if (includeUnstaged) collectNameStatus(root, ['git', 'diff', '--name-status'], discovered, deletedFiles);
+  if (includeUnstaged) {
+    const result = Bun.spawnSync(['git', 'ls-files', '--others', '--exclude-standard'], { cwd: root, stdout: 'pipe', stderr: 'pipe' });
+    if (result.exitCode === 0) {
+      for (const file of new TextDecoder().decode(result.stdout).split(/\r?\n/).filter(Boolean)) {
+        discovered.set(file, 'untracked');
+      }
+    }
+  }
+
+  const files = [...discovered.keys()].filter(file => {
+    const reason = reviewPackSkipReason(root, changeId, file, deletedFiles.has(file));
+    if (reason) skippedFiles.set(file, reason);
+    return !reason;
+  }).sort();
+
+  return {
+    files,
+    deletedFiles: [...deletedFiles].sort(),
+    skippedFiles: [...skippedFiles].sort(([a], [b]) => a.localeCompare(b)).map(([path, reason]) => ({ path, reason })),
+  };
+}
+
+function collectNameStatus(root: string, command: string[], discovered: Map<string, string>, deletedFiles: Set<string>) {
+  const result = Bun.spawnSync(command, { cwd: root, stdout: 'pipe', stderr: 'pipe' });
+  if (result.exitCode !== 0) return;
+
+  for (const line of new TextDecoder().decode(result.stdout).split(/\r?\n/).filter(Boolean)) {
+    const [status, firstPath, secondPath] = line.split('\t');
+    if (!status || !firstPath) continue;
+    if (status.startsWith('D')) {
+      deletedFiles.add(firstPath);
+      discovered.delete(firstPath);
+      continue;
+    }
+    const file = status.startsWith('R') || status.startsWith('C') ? secondPath : firstPath;
+    if (file) discovered.set(file, status);
+  }
+}
+
+function reviewPackSkipReason(root: string, changeId: string, file: string, deleted: boolean): string | undefined {
+  if (deleted) return 'deleted';
+  if (file.includes('/node_modules/') || file.startsWith('node_modules/')) return 'cache';
+  if (file.includes('/.bun/') || file.startsWith('.bun/')) return 'cache';
+  const path = join(root, file);
+  if (!existsSync(path)) return 'missing';
+  if (statSync(path).isDirectory()) return 'directory';
+  if (file.startsWith(`openspec/changes/${changeId}/`)) {
+    if (file.endsWith('/verification.md') || file.endsWith('/verification-smoke.md')) return undefined;
+    return 'openspec planning artifact';
+  }
+  return undefined;
+}
+
+function reviewPackValidationSummary(changeId: string, context: ValidationContext) {
+  if (!context.root) return [{ command: 'openspec validate', exitCode: null, summary: 'openspec root not found' }];
+  const result = Bun.spawnSync(['openspec', 'validate', changeId, '--strict'], { cwd: context.root, stdout: 'pipe', stderr: 'pipe' });
+  const summary = result.exitCode === 0 ? 'passed' : 'failed';
+  return [{ command: `openspec validate ${changeId} --strict`, exitCode: result.exitCode, summary }];
+}
+
+function printHumanReviewPack(payload: ReviewPack) {
+  console.log(`Review pack: ${payload.changeId}`);
+  console.log(`plan: ${payload.plan}`);
+  console.log(`specs_dir: ${payload.specsDir ?? 'none'}`);
+  console.log('files:');
+  for (const file of payload.files) console.log(`  - ${file}`);
+  if (payload.files.length === 0) console.log('  - none');
+  console.log('deleted_files:');
+  for (const file of payload.deletedFiles) console.log(`  - ${file}`);
+  if (payload.deletedFiles.length === 0) console.log('  - none');
+  console.log('skipped_files:');
+  for (const file of payload.skippedFiles) console.log(`  - ${file.path}: ${file.reason}`);
+  if (payload.skippedFiles.length === 0) console.log('  - none');
+  console.log('validation_summary:');
+  for (const validation of payload.validationSummary) console.log(`  - ${validation.command}: ${validation.summary} (${validation.exitCode ?? 'not_run'})`);
+  console.log('pending_post_review_tasks:');
+  for (const task of payload.pendingPostReviewTasks) console.log(`  - ${task.id} ${task.text}`);
+  if (payload.pendingPostReviewTasks.length === 0) console.log('  - none');
 }
 
 function showStatus(args: string[]) {
@@ -1042,7 +1190,7 @@ function parseArgs(args: string[]): ParsedArgs {
         throw new Error('empty option name');
       }
 
-      if (optionName === 'json') {
+      if (['json', 'staged', 'unstaged', 'all'].includes(optionName)) {
         options.set(optionName, ['true']);
         continue;
       }
@@ -1330,6 +1478,7 @@ function printUsage() {
   openspec-trace index add-active <change-id>
   openspec-trace index archive <change-id>
   openspec-trace index validate
+  openspec-trace review-pack <change-id> [--json] [--staged|--unstaged|--all]
   openspec-trace status <change-id> [--phase pre-review|post-review|archive|commit] [--json]`);
 }
 
