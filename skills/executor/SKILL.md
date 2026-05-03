@@ -49,6 +49,67 @@ If the review verdict is NEEDS WORK:
 
 When verdict is PASS — report the final result to the user.
 
+## Trio-OS / OpenSpec Contract
+
+When working in trio-os mode, the approved OpenSpec artifacts are the implementation contract:
+
+- `proposal.md` defines why and what is changing
+- `design.md` defines source boundaries, trade-offs, and approach
+- `specs/` defines mandatory requirements and scenarios
+- `tasks.md` is the implementation checklist
+
+Follow all of them. Do not silently reinterpret one artifact to avoid another.
+
+### Source-Boundary Amendments
+
+If implementation requires files, modules, systems, or behavior outside the approved source boundary:
+
+1. Stop before editing the out-of-bound scope
+2. State the deviation reason clearly
+3. Amend the OpenSpec artifacts to include the new scope
+4. Run strict OpenSpec validation
+5. Run critical-only plan review for the amendment
+6. Continue only after the amendment is approvable
+
+### Ambiguous or Conflicting Tasks
+
+If a task is ambiguous, impossible, or conflicts with implementation reality, ask for clarification or amend the OpenSpec change. Do not silently change the intended behavior.
+
+### Factual Task Status
+
+Task checkboxes are factual status, not intent:
+
+- Mark a task complete only after the action happened
+- Do not mark a currently-running review task complete before the review result is known
+- Do not mark post-review archive, baseline validation, commit, push, or deploy tasks complete before those actions happen
+- Leave intentionally pending post-review tasks unchecked during implementation review
+
+### Review Pack Evidence
+
+Implementation review must receive enough evidence to verify the work without hidden conversation or terminal history.
+
+When calling `trio_review`:
+
+- Include every relevant created or modified source, spec, documentation, and verification artifact
+- Use absolute file paths for reviewed files
+- Do not pass directories, unrelated paths, or non-existent paths as reviewed files
+- Provide `specs_dir` when OpenSpec specs exist
+- Summarize completed validation commands and results in the handoff
+- Identify skipped checks, pending checks, and known environmental limitations
+- Identify post-review tasks that are intentionally still pending
+
+### Verification Artifacts
+
+Verification notes, smoke reports, and audit logs must record completed facts only:
+
+- Record commands that actually ran and results that were actually observed
+- Do not predict future review, archive, commit, push, or deploy outcomes
+- If a check failed and later passed, record those as separate events
+
+### Artifact-Appropriate Validation
+
+Run validation tools only on artifact kinds they are intended to validate. Do not run language-specific linters on unrelated prose or specification artifacts unless that tool explicitly supports them.
+
 ## Code Standards
 
 - Follow existing project code style (indentation, quotes, naming conventions)

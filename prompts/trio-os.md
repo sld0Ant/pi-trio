@@ -8,7 +8,7 @@ This workflow integrates OpenSpec with trio. OpenSpec handles planning (specs as
 ## Pre-flight
 
 Before starting, check that `openspec` CLI is installed: run `which openspec`.
-If not found, tell the user to install it: `bun add -g @fission-ai/openspec@latest`
+If not found, tell the user to install the OpenSpec CLI with the project's preferred package manager. For example, Bun users can run: `bun add -g @fission-ai/openspec@latest`.
 Then initialize in the project if needed: `openspec init --tools pi`
 
 ## Workflow
@@ -20,6 +20,8 @@ Read the openspec skill. Use `/opsx:propose` workflow to create the change:
 - specs/ — delta-specs with requirements and scenarios
 - tasks.md — implementation checklist
 
+Ask for `tasks.md` sections that distinguish implementation, focused validation, review handoff, and post-review operations when applicable. Post-review operations include archive, baseline validation, commit, push, deploy, or release steps that must happen only after implementation review passes.
+
 After artifacts are created, call `trio_plan_review` with an OpenSpec review pack, not tasks.md alone:
 - `plan`: `""`
 - `mode`: `"openspec"`
@@ -30,8 +32,8 @@ Fix Critical and selected Important issues. For confirmation review after Critic
 
 **Phase 2 — Execute** (load skill `executor`):
 After artifacts are approved, read the executor skill. Implement strictly according to tasks.md.
-Update checkboxes in tasks.md as you complete each task: `[ ]` → `[x]`.
-Track all created/modified files (excluding openspec/ artifacts).
+Update checkboxes in tasks.md as you complete each task: `[ ]` → `[x]`. Checkboxes are factual: mark tasks complete only after the action happened. Leave review tasks and post-review operations pending until their results/actions are known.
+Track all created/modified files and relevant verification/documentation artifacts. Exclude OpenSpec planning artifacts from the implementation file list unless they are verification artifacts or were modified during implementation.
 
 **Phase 3 — Code Review**:
 After implementation, call the `trio_review` tool:
@@ -41,5 +43,7 @@ After implementation, call the `trio_review` tool:
 
 If verdict is NEEDS WORK — fix the issues and call `trio_review` again.
 If verdict is PASS — run `/opsx:archive` to merge delta-specs into main specs and archive the change.
+
+Run post-review operations only after implementation review passes. Record archive, baseline validation, commit, push, deploy, or release tasks as complete only after those actions happen.
 
 Report the final result to the user.
