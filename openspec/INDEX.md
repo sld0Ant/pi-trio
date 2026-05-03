@@ -68,27 +68,7 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 
 ## Active Changes
 
-### improve-trio-os-review-convergence
-- Status: active-complete
-- Capability:
-  - trio-plan-review-convergence
-- Summary: Adds review-depth controls, approvable plan-review verdicts, and OpenSpec review packs for `trio_plan_review`.
-- Source boundary:
-  - `extensions/trio-reviewer/index.ts`
-  - `extensions/trio-reviewer/plan-reviewer-prompt.md`
-  - `extensions/trio-reviewer/profiles/openspec.md`
-  - `prompts/trio-os.md`
-  - `README.md`
-  - `CHANGELOG.md`
-- Related changes:
-  - `implement-trio-workflow-process-contract`
-  - `manage-openspec-review-profile`
-- Key decisions:
-  - `trio_plan_review` supports `mode: "openspec"` and `review_depth`.
-  - OpenSpec plan review receives proposal, design, tasks, delta specs, relevant baseline specs, and strict validation output.
-  - `APPROVABLE_WITH_NOTES` and `APPROVED` map to compatibility `PASS` while preserving `rawVerdict`.
-- Archive path: pending
-- Commit: `6d2112a`
+
 
 ## Archived Changes
 
@@ -251,6 +231,28 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
   - Implementation reviewer severity is calibrated around Critical, Important, and Suggestion categories.
 - Archive path: `openspec/changes/archive/2026-05-03-implement-trio-workflow-process-contract/`
 - Commit: `b818ccb`
+
+### improve-trio-os-review-convergence
+- Status: archived
+- Capability:
+  - trio-plan-review-convergence
+- Summary: Adds review-depth controls, approvable plan-review verdicts, and OpenSpec review packs for `trio_plan_review`.
+- Source boundary:
+  - `CHANGELOG.md`
+  - `README.md`
+  - `extensions/trio-reviewer/index.ts`
+  - `extensions/trio-reviewer/plan-reviewer-prompt.md`
+  - `extensions/trio-reviewer/profiles/openspec.md`
+  - `prompts/trio-os.md`
+- Related changes:
+  - `implement-trio-workflow-process-contract`
+  - `manage-openspec-review-profile`
+- Key decisions:
+  - `trio_plan_review` supports `mode: "openspec"` and `review_depth`.
+  - OpenSpec plan review receives proposal, design, tasks, delta specs, relevant baseline specs, and strict validation output.
+  - `APPROVABLE_WITH_NOTES` and `APPROVED` map to compatibility `PASS` while preserving `rawVerdict`.
+- Archive path: `openspec/changes/archive/2026-05-03-improve-trio-os-review-convergence/`
+- Commit: pending
 
 ### manage-openspec-review-profile
 - Status: archived
