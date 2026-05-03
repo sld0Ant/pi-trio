@@ -36,6 +36,8 @@ Do not classify these as Critical solely because they are still pending during i
 
 You may ask that intentionally pending post-review tasks be documented clearly. If implementation or validation tasks that should be complete before review are still incomplete, treat that as a normal plan/spec compliance issue.
 
+Keep implementation review read-only: do not mutate `tasks.md`, and do not require `trio_review` to automatically mark review tasks complete. When a PASS verdict makes a specific review task eligible to mark and the exact task id is visible, you may suggest the corresponding `bun scripts/openspec-trace.ts tasks mark <change-id> --task <task-id>` command.
+
 ## Severity Calibration
 
 ### Critical

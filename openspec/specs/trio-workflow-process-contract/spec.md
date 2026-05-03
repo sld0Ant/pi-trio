@@ -6,26 +6,25 @@ TBD - created by archiving change implement-trio-workflow-process-contract. Upda
 ### Requirement: Executor SHALL preserve the approved trio-os process contract
 The executor skill SHALL instruct agents to treat approved OpenSpec artifacts as the implementation contract for trio-os work.
 
-#### Scenario: Source-boundary expansion stops implementation
-- **GIVEN** approved OpenSpec artifacts define a source boundary
-- **WHEN** implementation requires files, modules, systems, or behaviors outside that boundary
-- **THEN** the executor is instructed to stop before editing that out-of-bound scope
-- **AND** explain the deviation reason
-- **AND** amend OpenSpec artifacts before continuing
-- **AND** run strict OpenSpec validation
-- **AND** obtain critical-only plan-review approval for the amendment
-
-#### Scenario: Ambiguous or conflicting tasks are not silently reinterpreted
-- **GIVEN** `tasks.md` is the approved implementation checklist
-- **WHEN** a task is ambiguous, impossible, or conflicts with implementation reality
-- **THEN** the executor is instructed to ask for clarification or amend OpenSpec
-- **AND** not silently change the intended behavior
-
 #### Scenario: Task checkboxes are factual
 - **WHEN** the executor updates task checkboxes
 - **THEN** the executor skill instructs it to mark a task complete only after the action happened
 - **AND** not mark currently-running review tasks complete before the review result is known
 - **AND** not mark post-review archive, baseline validation, commit, push, or deploy tasks complete before those actions happen
+
+#### Scenario: Available task helper is used for checkbox updates
+- **GIVEN** the repository provides `scripts/openspec-trace.ts`
+- **AND** the helper can be run safely for the current change
+- **WHEN** the executor marks an OpenSpec task checkbox complete
+- **THEN** it uses `bun scripts/openspec-trace.ts run <change-id> --task <task-id> -- <command...>` for command-backed tasks
+- **AND** uses `bun scripts/openspec-trace.ts tasks mark <change-id> --task <task-id>` for explicit factual updates after non-command actions
+- **AND** does not manually edit task checkboxes
+
+#### Scenario: Manual checkbox edit exception is documented
+- **GIVEN** the task helper is unavailable, broken, or currently being modified in a way that prevents safe use
+- **WHEN** the executor must update task checkboxes manually
+- **THEN** the executor records the exception reason in the verification notes or review handoff
+- **AND** preserves factual checkbox timing rules
 
 ### Requirement: Executor SHALL provide complete implementation-review evidence
 The executor skill SHALL instruct agents to provide enough review evidence for an independent implementation reviewer to verify compliance without hidden conversation or terminal history.
@@ -55,31 +54,11 @@ The executor skill SHALL instruct agents to provide enough review evidence for a
 ### Requirement: Implementation reviewer SHALL understand trio-os workflow gates
 The implementation reviewer prompt SHALL distinguish implementation correctness from workflow tasks that are necessarily pending during review.
 
-#### Scenario: Post-review tasks do not block review by default
-- **GIVEN** a plan includes archive, baseline sync, commit, push, or deploy steps that must occur after implementation review
-- **WHEN** implementation review is running before those steps
-- **THEN** the reviewer prompt instructs the reviewer not to classify unchecked post-review tasks as Critical solely because they are pending
-- **AND** allow requesting clearer pending-task documentation when needed
-
-#### Scenario: Current review task is not recursively blocking
-- **GIVEN** a plan includes a task to run implementation review
-- **WHEN** the current review invocation is satisfying that task
-- **THEN** the reviewer prompt instructs the reviewer not to treat that checkbox as a Critical failure solely because the result was not known before invocation
-
-#### Scenario: Severity levels are calibrated
-- **WHEN** the reviewer reports findings
-- **THEN** Critical findings are limited to behavioral breakage in approved scope, security or secret or egress risk, source-boundary violations, direct MUST or SHALL violations, missing required implementation, or incomplete review packs that prevent verification
-- **AND** Important findings cover meaningful robustness, documentation, rollback, or focused validation gaps that do not immediately violate core behavior
-- **AND** Suggestions cover polish, optional coverage, naming, comments, or ergonomics
-
-#### Scenario: Incomplete review packs are classified explicitly
-- **WHEN** reviewed evidence is missing or insufficient
-- **THEN** the reviewer prompt instructs the reviewer to report a review-pack completeness issue
-- **AND** not infer unrelated implementation defects from missing context
-
-#### Scenario: Reviewer avoids unbounded validation expansion
-- **WHEN** validation evidence exists for the approved scope
-- **THEN** the reviewer prompt instructs the reviewer not to require exhaustive tests outside the approved risk boundary unless a concrete untested risk violates the OpenSpec contract
+#### Scenario: Reviewer remains read-only for task updates
+- **WHEN** implementation review completes
+- **THEN** the reviewer does not mutate `tasks.md`
+- **AND** does not require `trio_review` to automatically mark review tasks complete
+- **AND** may suggest exact `openspec-trace tasks mark` commands when an approving implementation-review verdict such as `PASS` makes a specific review task eligible to mark
 
 ### Requirement: trio-os SHALL separate implementation, validation, review handoff, and post-review tasks
 The trio-os workflow prompt SHALL instruct agents to keep task phases separate so implementation review does not conflict with post-review operations.
