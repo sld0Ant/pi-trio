@@ -10,6 +10,7 @@
 - OpenSpec traceability index and `OpenSpec-Change` commit trailer workflow
 - `/trio-os-make-index` prompt workflow for explicit OpenSpec traceability index bootstrap or repair
 - `openspec-trace` commit message helper for generating and validating `OpenSpec-Change` trailers
+- Local reviewer diagnostics with timing logs, profile details, safe default metadata, and opt-in raw capture
 
 ### Changed
 

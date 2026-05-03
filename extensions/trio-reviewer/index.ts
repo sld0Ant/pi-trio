@@ -11,8 +11,9 @@ import {
 
 import { Type } from "@sinclair/typebox";
 import { Container, type SettingItem, SettingsList, Text, matchesKey } from "@mariozechner/pi-tui";
-import { readFileSync, readdirSync, existsSync, realpathSync, statSync, lstatSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { join, dirname, basename, resolve, relative, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Model } from "@mariozechner/pi-ai";
@@ -24,7 +25,41 @@ const BUILTIN_PROFILES_DIR = join(__dirname, "profiles");
 const GLOBAL_PROFILES_DIR = join(process.env.HOME ?? "~", ".pi", "agent", "trio-profiles");
 const PROJECT_PROFILES_DIR = join(process.cwd(), ".pi", "trio-profiles");
 const MAX_PACK_FILE_SIZE = 128 * 1024;
+const MAX_RAW_LOG_FIELD_SIZE = 64 * 1024;
+const DEFAULT_DIAGNOSTIC_LOG_DIR = "/tmp/pi-trio-review-logs";
 const MANAGED_PROFILE_NAMES = new Set(["openspec"]);
+
+type DiagnosticPhase = {
+	name: string;
+	durationMs: number;
+};
+
+type DiagnosticLog = {
+	tool: "trio_plan_review" | "trio_review";
+	startedAt: string;
+	finishedAt?: string;
+	durationMs?: number;
+	mode?: string;
+	reviewDepth?: string;
+	profiles: string[];
+	managedProfiles: string[];
+	input: Record<string, unknown>;
+	phases: DiagnosticPhase[];
+	pack?: {
+		chars: number;
+		estimatedTokens: number;
+	};
+	result?: Record<string, unknown>;
+	warnings: string[];
+	raw?: Record<string, string>;
+	rawTruncation?: Record<string, { truncated: boolean; originalBytes: number; storedBytes: number }>;
+};
+
+type DiagnosticWriteResult = {
+	durationMs: number;
+	logPath?: string;
+	warnings: string[];
+};
 
 function loadProfilesFromDir(dir: string, profiles: Map<string, string>): void {
 	if (!existsSync(dir)) return;
@@ -68,6 +103,124 @@ function isOpenSpecPlanReview(mode: ReviewMode): boolean {
 
 function isOpenSpecCodeReview(specsDir?: string): boolean {
 	return !!specsDir;
+}
+
+function startDiagnosticLog(params: {
+	tool: "trio_plan_review" | "trio_review";
+	mode?: string;
+	reviewDepth?: string;
+	input: Record<string, unknown>;
+}): DiagnosticLog {
+	return {
+		tool: params.tool,
+		startedAt: new Date().toISOString(),
+		mode: params.mode,
+		reviewDepth: params.reviewDepth,
+		profiles: [],
+		managedProfiles: [],
+		input: params.input,
+		phases: [],
+		warnings: [],
+	};
+}
+
+async function timePhase<T>(diagnostics: DiagnosticLog, name: string, fn: () => Promise<T> | T): Promise<T> {
+	const startedAt = Date.now();
+	try {
+		return await fn();
+	} finally {
+		diagnostics.phases.push({ name, durationMs: Date.now() - startedAt });
+	}
+}
+
+function setDiagnosticProfiles(diagnostics: DiagnosticLog, profileNames: string[]): void {
+	diagnostics.profiles = profileNames;
+	diagnostics.managedProfiles = profileNames.filter((name) => MANAGED_PROFILE_NAMES.has(name));
+}
+
+function setDiagnosticPack(diagnostics: DiagnosticLog, text: string): void {
+	diagnostics.pack = { chars: text.length, estimatedTokens: Math.ceil(text.length / 4) };
+}
+
+function truncateRawField(value: string): { stored: string; metadata: { truncated: boolean; originalBytes: number; storedBytes: number } } {
+	const encoder = new TextEncoder();
+	const originalBytes = encoder.encode(value).byteLength;
+	if (originalBytes <= MAX_RAW_LOG_FIELD_SIZE) {
+		return { stored: value, metadata: { truncated: false, originalBytes, storedBytes: originalBytes } };
+	}
+
+	let stored = "";
+	let storedBytes = 0;
+	for (const character of value) {
+		const characterBytes = encoder.encode(character).byteLength;
+		if (storedBytes + characterBytes > MAX_RAW_LOG_FIELD_SIZE) break;
+		stored += character;
+		storedBytes += characterBytes;
+	}
+	return { stored, metadata: { truncated: true, originalBytes, storedBytes } };
+}
+
+function setDiagnosticRaw(diagnostics: DiagnosticLog, fields: Record<string, string>): void {
+	if (process.env.TRIO_REVIEW_LOG_RAW !== "1") return;
+
+	diagnostics.raw = {};
+	diagnostics.rawTruncation = {};
+	for (const [name, value] of Object.entries(fields)) {
+		const truncated = truncateRawField(value);
+		diagnostics.raw[name] = truncated.stored;
+		diagnostics.rawTruncation[name] = truncated.metadata;
+		if (truncated.metadata.truncated) diagnostics.warnings.push(`raw field truncated: ${name}`);
+	}
+}
+
+function diagnosticLogDir(): string {
+	return process.env.TRIO_REVIEW_LOG_DIR || DEFAULT_DIAGNOSTIC_LOG_DIR;
+}
+
+function diagnosticLogPath(tool: string): string {
+	const timestamp = new Date().toISOString().replaceAll(":", "-");
+	return join(diagnosticLogDir(), `${timestamp}-${tool}-${randomUUID().slice(0, 8)}.json`);
+}
+
+function writeDiagnosticLog(diagnostics: DiagnosticLog): DiagnosticWriteResult {
+	diagnostics.finishedAt = new Date().toISOString();
+	diagnostics.durationMs = Date.parse(diagnostics.finishedAt) - Date.parse(diagnostics.startedAt);
+
+	try {
+		const logDir = diagnosticLogDir();
+		mkdirSync(logDir, { recursive: true, mode: 0o700 });
+		try {
+			chmodSync(logDir, 0o700);
+		} catch (error) {
+			diagnostics.warnings.push(`could not set log directory permissions: ${error instanceof Error ? error.message : String(error)}`);
+		}
+
+		const logPath = diagnosticLogPath(diagnostics.tool);
+		const tempPath = `${logPath}.tmp-${process.pid}-${randomUUID().slice(0, 8)}`;
+		const content = `${JSON.stringify(diagnostics, null, 2)}\n`;
+		writeFileSync(tempPath, content, { mode: 0o600, flag: "wx" });
+		try {
+			chmodSync(tempPath, 0o600);
+		} catch (error) {
+			diagnostics.warnings.push(`could not set log file permissions: ${error instanceof Error ? error.message : String(error)}`);
+			writeFileSync(tempPath, content, { mode: 0o600 });
+		}
+		try {
+			renameSync(tempPath, logPath);
+		} catch (error) {
+			diagnostics.warnings.push(`atomic log rename failed: ${error instanceof Error ? error.message : String(error)}`);
+			writeFileSync(logPath, `${JSON.stringify(diagnostics, null, 2)}\n`, { mode: 0o600, flag: "wx" });
+			try {
+				rmSync(tempPath, { force: true });
+			} catch (cleanupError) {
+				diagnostics.warnings.push(`temporary log cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`);
+			}
+		}
+		return { durationMs: diagnostics.durationMs, logPath, warnings: diagnostics.warnings };
+	} catch (error) {
+		const warning = `diagnostic log write failed: ${error instanceof Error ? error.message : String(error)}`;
+		return { durationMs: diagnostics.durationMs, warnings: [...diagnostics.warnings, warning] };
+	}
 }
 
 async function runSubAgent(
@@ -466,57 +619,88 @@ Pass the full plan text, or use mode=openspec with a change_dir.`,
 		async execute(toolCallId, params, signal, onUpdate, ctx) {
 			const reviewDepth = (params.review_depth ?? "critical_and_important") as ReviewDepth;
 			const reviewMode = (params.mode ?? "generic") as ReviewMode;
+			const diagnostics = startDiagnosticLog({
+				tool: "trio_plan_review",
+				mode: reviewMode,
+				reviewDepth,
+				input: {
+					changeDir: params.change_dir,
+					includeBaselineSpecs: params.include_baseline_specs ?? true,
+					planChars: params.plan.length,
+				},
+			});
 			const model = getModel(ctx);
 			const modelRegistry = currentModelRegistry ?? ctx.modelRegistry;
 			const authStorage = modelRegistry?.authStorage;
 			if (!model) {
-				return { content: [{ type: "text", text: "ERROR: No model available" }], isError: true };
+				const diagnostic = writeDiagnosticLog(diagnostics);
+				return { content: [{ type: "text", text: "ERROR: No model available" }], isError: true, details: diagnostic };
 			}
 			if (!authStorage || !modelRegistry) {
-				return { content: [{ type: "text", text: "ERROR: No auth storage or model registry available" }], isError: true };
+				const diagnostic = writeDiagnosticLog(diagnostics);
+				return { content: [{ type: "text", text: "ERROR: No auth storage or model registry available" }], isError: true, details: diagnostic };
 			}
 
-			await ensureProfiles(ctx);
-
-			const invocationProfiles = buildInvocationProfiles(activeProfiles, { includeOpenSpec: isOpenSpecPlanReview(reviewMode) });
-			const profileNames = [...invocationProfiles.keys()];
-			const profileInfo = profileNames.length > 0 ? ` with profiles: ${profileNames.join(", ")}` : " (no profiles)";
-			onUpdate?.({ content: [{ type: "text", text: `Reviewing plan with ${model.name}${profileInfo}...` }] });
-
 			try {
-				const prompt = buildPrompt(PLAN_REVIEWER_PROMPT, invocationProfiles);
+				onUpdate?.({ content: [{ type: "text", text: "[trio_plan_review] resolving reviewer profiles..." }] });
+				await timePhase(diagnostics, "resolve_profiles", () => ensureProfiles(ctx));
+
+				const invocationProfiles = await timePhase(diagnostics, "prepare_profiles", () => buildInvocationProfiles(activeProfiles, { includeOpenSpec: isOpenSpecPlanReview(reviewMode) }));
+				const profileNames = [...invocationProfiles.keys()];
+				setDiagnosticProfiles(diagnostics, profileNames);
+				const profileInfo = profileNames.length > 0 ? ` with profiles: ${profileNames.join(", ")}` : " (no profiles)";
+				onUpdate?.({ content: [{ type: "text", text: `[trio_plan_review] applying profiles: ${profileNames.join(", ") || "none"}` }] });
+
+				const prompt = await timePhase(diagnostics, "build_system_prompt", () => buildPrompt(PLAN_REVIEWER_PROMPT, invocationProfiles));
 				let reviewText = params.plan;
 				let openspecValidationStatus: "pass" | "fail" | "not_run" | undefined;
 				if (reviewMode === "openspec" && !params.change_dir) {
-					return { content: [{ type: "text", text: "ERROR: change_dir is required when mode=openspec" }], isError: true };
+					const diagnostic = writeDiagnosticLog(diagnostics);
+					return { content: [{ type: "text", text: "ERROR: change_dir is required when mode=openspec" }], isError: true, details: diagnostic };
 				}
 				if (reviewMode === "openspec" && params.change_dir) {
+					onUpdate?.({ content: [{ type: "text", text: "[trio_plan_review] building OpenSpec review pack..." }] });
 					const resolvedChange = resolveOpenSpecChange(ctx.cwd ?? process.cwd(), params.change_dir);
 					if ("error" in resolvedChange) {
-						return { content: [{ type: "text", text: `ERROR: invalid change_dir: ${resolvedChange.error}` }], isError: true };
+						const diagnostic = writeDiagnosticLog(diagnostics);
+						return { content: [{ type: "text", text: `ERROR: invalid change_dir: ${resolvedChange.error}` }], isError: true, details: diagnostic };
 					}
-					const pack = buildOpenSpecPack({
-						cwd: ctx.cwd ?? process.cwd(),
-						plan: params.plan,
-						changeDir: params.change_dir,
-						reviewDepth,
-						includeBaselineSpecs: params.include_baseline_specs ?? true,
-						reviewScope: params.review_scope,
-						stopCondition: params.stop_condition,
-					});
+					const pack = await timePhase(diagnostics, "build_openspec_pack", () =>
+						buildOpenSpecPack({
+							cwd: ctx.cwd ?? process.cwd(),
+							plan: params.plan,
+							changeDir: params.change_dir,
+							reviewDepth,
+							includeBaselineSpecs: params.include_baseline_specs ?? true,
+							reviewScope: params.review_scope,
+							stopCondition: params.stop_condition,
+						}),
+					);
 					reviewText = pack.text;
 					openspecValidationStatus = pack.validationStatus;
 				} else {
-					reviewText = `# Review Settings\n\n- mode: ${reviewMode}\n- review_depth: ${reviewDepth}\n\n## Plan\n\n${fenced(params.plan)}`;
+					reviewText = await timePhase(diagnostics, "build_generic_pack", () => `# Review Settings\n\n- mode: ${reviewMode}\n- review_depth: ${reviewDepth}\n\n## Plan\n\n${fenced(params.plan)}`);
 				}
-				const result = await runSubAgent(model, prompt, `# Plan Review Request\n\n${reviewText}`, authStorage, modelRegistry, ctx.cwd ?? process.cwd());
+				setDiagnosticPack(diagnostics, reviewText);
+				const userPrompt = `# Plan Review Request\n\n${reviewText}`;
+				setDiagnosticRaw(diagnostics, { systemPrompt: prompt, userPrompt });
+				onUpdate?.({ content: [{ type: "text", text: `[trio_plan_review] calling reviewer model ${model.name}${profileInfo}...` }] });
+				const result = await timePhase(diagnostics, "model_call", () => runSubAgent(model, prompt, userPrompt, authStorage, modelRegistry, ctx.cwd ?? process.cwd()));
+				setDiagnosticRaw(diagnostics, { systemPrompt: prompt, userPrompt, modelResponse: result });
+				const rawVerdict = parseRawVerdict(result);
+				const verdict = parseVerdict(result);
+				diagnostics.result = { verdict, rawVerdict, openspecValidationStatus };
+				const diagnostic = writeDiagnosticLog(diagnostics);
+				onUpdate?.({ content: [{ type: "text", text: `[trio_plan_review] reviewer finished in ${(diagnostic.durationMs / 1000).toFixed(1)}s${diagnostic.logPath ? ` • log: ${diagnostic.logPath}` : ""}` }] });
 				return {
 					content: [{ type: "text", text: result }],
-					details: { verdict: parseVerdict(result), rawVerdict: parseRawVerdict(result), type: "plan", reviewDepth, mode: reviewMode, openspecValidationStatus, profiles: profileNames },
+					details: { verdict, rawVerdict, type: "plan", reviewDepth, mode: reviewMode, openspecValidationStatus, profiles: profileNames, durationMs: diagnostic.durationMs, logPath: diagnostic.logPath, diagnosticWarnings: diagnostic.warnings },
 				};
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
-				return { content: [{ type: "text", text: `Plan review sub-agent error: ${message}` }], isError: true };
+				diagnostics.result = { error: message };
+				const diagnostic = writeDiagnosticLog(diagnostics);
+				return { content: [{ type: "text", text: `Plan review sub-agent error: ${message}` }], isError: true, details: diagnostic };
 			}
 		},
 	});
@@ -542,44 +726,69 @@ Pass the plan text, list of created/modified file paths, and optionally the Open
 
 		async execute(toolCallId, params, signal, onUpdate, ctx) {
 			const { plan, files, specs_dir: specsDir } = params;
+			const diagnostics = startDiagnosticLog({
+				tool: "trio_review",
+				mode: specsDir ? "openspec" : "generic",
+				input: { filesCount: files.length, specsDir, planChars: plan.length },
+			});
 			const model = getModel(ctx);
 			const modelRegistry = currentModelRegistry ?? ctx.modelRegistry;
 			const authStorage = modelRegistry?.authStorage;
 			if (!model) {
-				return { content: [{ type: "text", text: "ERROR: No model available" }], isError: true };
+				const diagnostic = writeDiagnosticLog(diagnostics);
+				return { content: [{ type: "text", text: "ERROR: No model available" }], isError: true, details: diagnostic };
 			}
 			if (!authStorage || !modelRegistry) {
-				return { content: [{ type: "text", text: "ERROR: No auth storage or model registry available" }], isError: true };
-			}
-
-			await ensureProfiles(ctx);
-
-			const invocationProfiles = buildInvocationProfiles(activeProfiles, { includeOpenSpec: isOpenSpecCodeReview(specsDir) });
-			const profileNames = [...invocationProfiles.keys()];
-			const profileInfo = profileNames.length > 0 ? ` with profiles: ${profileNames.join(", ")}` : " (no profiles)";
-			onUpdate?.({ content: [{ type: "text", text: `Reviewing ${files.length} files with ${model.name}${profileInfo}...` }] });
-
-			const fileContents: string[] = [];
-			for (const filePath of files) {
-				const content = safeReadFile(filePath);
-				fileContents.push(`## File: ${filePath}\n${fenced(content)}`);
-			}
-
-			let prompt = `# Review Request\n\n## Plan\n${plan}\n\n## Files\n${fileContents.join("\n\n")}`;
-			if (specsDir) {
-				prompt += `\n\n## OpenSpec Specifications\n${readSpecs(specsDir)}`;
+				const diagnostic = writeDiagnosticLog(diagnostics);
+				return { content: [{ type: "text", text: "ERROR: No auth storage or model registry available" }], isError: true, details: diagnostic };
 			}
 
 			try {
-				const reviewerSystemPrompt = buildPrompt(CODE_REVIEWER_PROMPT, invocationProfiles);
-				const result = await runSubAgent(model, reviewerSystemPrompt, prompt, authStorage, modelRegistry, ctx.cwd ?? process.cwd());
+				onUpdate?.({ content: [{ type: "text", text: "[trio_review] resolving reviewer profiles..." }] });
+				await timePhase(diagnostics, "resolve_profiles", () => ensureProfiles(ctx));
+
+				const invocationProfiles = await timePhase(diagnostics, "prepare_profiles", () => buildInvocationProfiles(activeProfiles, { includeOpenSpec: isOpenSpecCodeReview(specsDir) }));
+				const profileNames = [...invocationProfiles.keys()];
+				setDiagnosticProfiles(diagnostics, profileNames);
+				const profileInfo = profileNames.length > 0 ? ` with profiles: ${profileNames.join(", ")}` : " (no profiles)";
+				onUpdate?.({ content: [{ type: "text", text: `[trio_review] applying profiles: ${profileNames.join(", ") || "none"}` }] });
+
+				onUpdate?.({ content: [{ type: "text", text: `[trio_review] reading ${files.length} files...` }] });
+				const fileContents = await timePhase(diagnostics, "read_files", () => {
+					const contents: string[] = [];
+					for (const filePath of files) {
+						const content = safeReadFile(filePath);
+						contents.push(`## File: ${filePath}\n${fenced(content)}`);
+					}
+					return contents;
+				});
+
+				let prompt = await timePhase(diagnostics, "build_review_pack", () => `# Review Request\n\n## Plan\n${plan}\n\n## Files\n${fileContents.join("\n\n")}`);
+				if (specsDir) {
+					onUpdate?.({ content: [{ type: "text", text: "[trio_review] reading OpenSpec specifications..." }] });
+					const specsText = await timePhase(diagnostics, "read_specs", () => readSpecs(specsDir));
+					prompt += `\n\n## OpenSpec Specifications\n${specsText}`;
+				}
+				setDiagnosticPack(diagnostics, prompt);
+				const reviewerSystemPrompt = await timePhase(diagnostics, "build_system_prompt", () => buildPrompt(CODE_REVIEWER_PROMPT, invocationProfiles));
+				setDiagnosticRaw(diagnostics, { systemPrompt: reviewerSystemPrompt, userPrompt: prompt });
+				onUpdate?.({ content: [{ type: "text", text: `[trio_review] calling reviewer model ${model.name}${profileInfo}...` }] });
+				const result = await timePhase(diagnostics, "model_call", () => runSubAgent(model, reviewerSystemPrompt, prompt, authStorage, modelRegistry, ctx.cwd ?? process.cwd()));
+				setDiagnosticRaw(diagnostics, { systemPrompt: reviewerSystemPrompt, userPrompt: prompt, modelResponse: result });
+				const rawVerdict = parseRawVerdict(result);
+				const verdict = parseVerdict(result);
+				diagnostics.result = { verdict, rawVerdict, filesReviewed: files.length, hasSpecs: !!specsDir };
+				const diagnostic = writeDiagnosticLog(diagnostics);
+				onUpdate?.({ content: [{ type: "text", text: `[trio_review] reviewer finished in ${(diagnostic.durationMs / 1000).toFixed(1)}s${diagnostic.logPath ? ` • log: ${diagnostic.logPath}` : ""}` }] });
 				return {
 					content: [{ type: "text", text: result }],
-					details: { verdict: parseVerdict(result), rawVerdict: parseRawVerdict(result), filesReviewed: files.length, hasSpecs: !!specsDir, profiles: profileNames },
+					details: { verdict, rawVerdict, filesReviewed: files.length, hasSpecs: !!specsDir, profiles: profileNames, durationMs: diagnostic.durationMs, logPath: diagnostic.logPath, diagnosticWarnings: diagnostic.warnings },
 				};
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
-				return { content: [{ type: "text", text: `Review sub-agent error: ${message}` }], isError: true };
+				diagnostics.result = { error: message };
+				const diagnostic = writeDiagnosticLog(diagnostics);
+				return { content: [{ type: "text", text: `Review sub-agent error: ${message}` }], isError: true, details: diagnostic };
 			}
 		},
 	});

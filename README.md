@@ -140,6 +140,34 @@ A confirmation review can use:
 
 Stop planning when strict OpenSpec validation passes and the raw verdict is `APPROVABLE_WITH_NOTES`, `APPROVED`, or legacy `PASS`.
 
+## Reviewer diagnostics
+
+`trio_plan_review` and `trio_review` write local timing diagnostics for each invocation. Tool details include `durationMs`, `logPath` when the log was written, `diagnosticWarnings`, and the applied `profiles`.
+
+Default log directory:
+
+```bash
+/tmp/pi-trio-review-logs
+```
+
+Override it with:
+
+```bash
+TRIO_REVIEW_LOG_DIR=/path/to/private/logs
+```
+
+Logs are JSON metadata by default: tool name, start/end time, phase durations, profile names, input counts, pack size, and verdict metadata. They do not include full prompts, full file contents, review packs, or model responses by default.
+
+Created log directories/files use private permissions where supported (`0700` directories, `0600` files). If logging fails, reviews still return normally and include a diagnostic warning.
+
+For local debugging only, raw capture can be enabled:
+
+```bash
+TRIO_REVIEW_LOG_RAW=1
+```
+
+Raw logs may contain prompt and model-response content and should be treated as sensitive. Raw fields are limited to 64 KiB each and include truncation metadata when shortened.
+
 ## Reviewer profiles
 
 The reviewer uses profiles — checklists injected into the sub-agent's system prompt. On the first review call in a session, an interactive picker lets you toggle which profiles to apply.
