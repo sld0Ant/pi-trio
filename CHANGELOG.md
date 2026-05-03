@@ -9,6 +9,7 @@
 - Approvable plan-review verdicts: `BLOCKED`, `APPROVABLE_WITH_NOTES`, and `APPROVED`
 - OpenSpec traceability index and `OpenSpec-Change` commit trailer workflow
 - `/trio-os-make-index` prompt workflow for explicit OpenSpec traceability index bootstrap or repair
+- `openspec-trace` commit message helper for generating and validating `OpenSpec-Change` trailers
 
 ### Changed
 
