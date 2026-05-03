@@ -124,23 +124,28 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 - Archive path: pending
 - Commit: pending
 
+## Archived Changes
+
 ### add-openspec-trace-task-runner-cli
-- Status: proposed-future
+- Status: archived
 - Capability:
   - openspec-trace-cli-tasks
-- Summary: Future CLI command to run validation commands and mark task checkboxes complete only after command success.
-- Source boundary: pending implementation plan
+- Summary: Adds `openspec-trace` task helpers for command-backed factual checkbox updates, explicit task marking, and phase readiness checks.
+- Source boundary:
+  - `scripts/openspec-trace.ts`
+  - `README.md`
+  - `CHANGELOG.md`
 - Related changes:
   - `add-openspec-traceability-index`
+  - `add-openspec-trace-commit-cli`
   - `add-openspec-trace-status-cli`
 - Key decisions:
   - Commands run as argv without shell interpolation by default.
-  - Task ids are dot-separated numeric identifiers.
-  - Failed commands do not mutate `tasks.md`.
-- Archive path: pending
+  - Task ids are exact dot-separated numeric identifiers; prefix matches do not count.
+  - Failed commands propagate the command exit status and do not mutate `tasks.md`.
+  - `tasks check` reports `pre-review` and `post-review` readiness using heading-based phase heuristics.
+- Archive path: `openspec/changes/archive/2026-05-03-add-openspec-trace-task-runner-cli/`
 - Commit: pending
-
-## Archived Changes
 
 ### add-trio-reviewer-diagnostics
 - Status: archived

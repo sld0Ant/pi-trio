@@ -69,6 +69,16 @@ bun scripts/openspec-trace.ts check-commit-msg .git/COMMIT_EDITMSG --change add-
 
 It emits one `OpenSpec-Change:` trailer per change id, rejects duplicate trailers, validates lowercase kebab-case ids, and rejects dated archive folder names when the original change id can be inferred.
 
+The helper can also update OpenSpec task checkboxes factually:
+
+```bash
+bun scripts/openspec-trace.ts run add-example-change --task 3.1 -- openspec validate add-example-change --strict
+bun scripts/openspec-trace.ts tasks mark add-example-change --task 4.1
+bun scripts/openspec-trace.ts tasks check add-example-change --phase pre-review
+```
+
+`run` executes the command as argv without shell interpolation, marks the exact task only after exit status `0`, leaves failed tasks unchanged, and reports missing or ambiguous task ids without mutation. `tasks check` is read-only and reports `pre-review` or `post-review` readiness from heading-based task phases.
+
 If an OpenSpec project is missing `openspec/INDEX.md`, `/trio-os` asks whether to create the index first, continue without it for the current task, or skip the prompt for the current session. The canonical dedicated prompt-template command for index bootstrap or repair is `/trio-os-make-index`; users asking for `/trio-os:make_index` mean this workflow, but no runtime alias is provided by default.
 
 ## What's inside

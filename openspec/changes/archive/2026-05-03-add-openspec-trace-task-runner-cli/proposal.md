@@ -7,7 +7,7 @@ Validation tasks are often checklist items in `tasks.md`. Agents can run a comma
 - Add a CLI wrapper for running a command tied to a task id.
 - Mark a task checkbox complete only after the command succeeds.
 - Leave the task unchanged when the command fails.
-- Record optional command output in a verification note if configured by future implementation.
+- Defer optional command-output verification note recording to future work.
 
 ## Capabilities
 

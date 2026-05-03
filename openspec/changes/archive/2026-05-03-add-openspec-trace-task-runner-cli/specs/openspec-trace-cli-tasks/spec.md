@@ -7,11 +7,12 @@ The traceability CLI SHALL provide a command runner that marks a task complete o
 - **WHEN** `run <change-id> --task <task-id> -- <command>` is run
 - **AND** the command exits with status 0
 - **THEN** the matching task checkbox is changed from `[ ]` to `[x]`
+- **AND** the runner exits with status 0
 
 #### Scenario: Failed command leaves task unchanged
 - **WHEN** the command exits with non-zero status
 - **THEN** the matching task checkbox remains unchanged
-- **AND** the runner exits with a failed status
+- **AND** the runner exits with the command's failed status
 
 #### Scenario: Missing or ambiguous task does not mutate files
 - **WHEN** the task id is missing or matches multiple checklist entries
@@ -30,13 +31,22 @@ The traceability CLI SHALL provide task helper commands for explicit factual sta
 - **WHEN** `tasks mark <change-id> --task <task-id>` is run
 - **THEN** exactly one matching task is marked complete
 - **AND** task ids match dot-separated numeric checklist identifiers such as `1`, `1.2`, or `6.1`
+- **AND** already-complete tasks are reported as already complete with a successful status
 - **AND** missing or ambiguous task ids fail without mutation
 
-#### Scenario: Phase check reports task readiness
-- **WHEN** `tasks check <change-id> --phase <phase>` is run
-- **THEN** the command reports task readiness for that phase
-- **AND** distinguishes implementation tasks from review and post-review tasks when section headings make that possible
+#### Scenario: Pre-review phase check reports readiness
+- **WHEN** `tasks check <change-id> --phase pre-review` is run
+- **THEN** the command exits successfully only when implementation/pre-review tasks before review or post-review sections are complete
+- **AND** pending review handoff or post-review tasks do not make pre-review fail
+- **AND** pending required task ids are reported when the phase is not ready
+
+#### Scenario: Post-review phase check reports readiness
+- **WHEN** `tasks check <change-id> --phase post-review` is run
+- **THEN** the command exits successfully only when implementation/pre-review tasks and review handoff tasks are complete
+- **AND** pending post-review tasks do not make post-review fail
+- **AND** pending required task ids are reported when the phase is not ready
 
 #### Scenario: Post-review tasks are not auto-completed accidentally
 - **WHEN** task automation runs before post-review actions happen
-- **THEN** post-review tasks remain unchecked unless explicitly targeted by the user after the action occurs
+- **THEN** post-review tasks remain unchecked unless the user explicitly targets the exact task id after the action occurs
+- **AND** the runner does not infer or auto-select post-review task ids
