@@ -90,44 +90,7 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 - Archive path: pending
 - Commit: `6d2112a`
 
-### add-openspec-trace-review-pack-cli
-- Status: proposed-future
-- Capability:
-  - openspec-trace-cli-review-pack
-- Summary: Future CLI command to generate `trio_review` handoff metadata from changed files, specs, and validation context.
-- Source boundary: pending implementation plan
-- Related changes:
-  - `add-openspec-traceability-index`
-  - `add-openspec-trace-status-cli`
-- Key decisions:
-  - Default discovery includes staged, unstaged, and untracked files.
-  - Deleted files are reported separately and not passed as reviewed file paths.
-  - OpenSpec planning artifacts are excluded by default unless relevant to implementation evidence.
-- Archive path: pending
-- Commit: pending
-
 ## Archived Changes
-
-### add-openspec-trace-status-cli
-- Status: archived
-- Capability:
-  - openspec-trace-cli-status
-- Summary: Adds `openspec-trace status` for read-only gate summaries across artifacts, validation, source-boundary drift, task readiness, archive state, and commit readiness.
-- Source boundary:
-  - `scripts/openspec-trace.ts`
-  - `README.md`
-  - `CHANGELOG.md`
-- Related changes:
-  - `add-openspec-traceability-index`
-  - `add-openspec-trace-task-runner-cli`
-  - `add-openspec-trace-commit-cli`
-- Key decisions:
-  - Phase gates are explicit for `pre-review`, `post-review`, `archive`, and `commit`.
-  - JSON output uses a stable v1 schema and the same exit codes as human output.
-  - Source-boundary drift uses working-tree staged, unstaged, and untracked paths only.
-  - Missing or partial git discovery reports `not_checked` instead of false pass.
-- Archive path: `openspec/changes/archive/2026-05-03-add-openspec-trace-status-cli/`
-- Commit: pending
 
 ### add-openspec-trace-commit-cli
 - Status: archived
@@ -163,6 +126,43 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
   - Human-owned fields should be preserved where possible.
   - Compactness checks should be deterministic.
 - Archive path: `openspec/changes/archive/2026-05-03-add-openspec-trace-index-cli/`
+- Commit: pending
+
+### add-openspec-trace-review-pack-cli
+- Status: archived
+- Capability:
+  - openspec-trace-cli-review-pack
+- Summary: Future CLI command to generate `trio_review` handoff metadata from changed files, specs, and validation context.
+- Source boundary: pending
+- Related changes:
+  - `add-openspec-traceability-index`
+  - `add-openspec-trace-status-cli`
+- Key decisions:
+  - Default discovery includes staged, unstaged, and untracked files.
+  - Deleted files are reported separately and not passed as reviewed file paths.
+  - OpenSpec planning artifacts are excluded by default unless relevant to implementation evidence.
+- Archive path: `openspec/changes/archive/2026-05-03-add-openspec-trace-review-pack-cli/`
+- Commit: pending
+
+### add-openspec-trace-status-cli
+- Status: archived
+- Capability:
+  - openspec-trace-cli-status
+- Summary: Adds `openspec-trace status` for read-only gate summaries across artifacts, validation, source-boundary drift, task readiness, archive state, and commit readiness.
+- Source boundary:
+  - `scripts/openspec-trace.ts`
+  - `README.md`
+  - `CHANGELOG.md`
+- Related changes:
+  - `add-openspec-traceability-index`
+  - `add-openspec-trace-task-runner-cli`
+  - `add-openspec-trace-commit-cli`
+- Key decisions:
+  - Phase gates are explicit for `pre-review`, `post-review`, `archive`, and `commit`.
+  - JSON output uses a stable v1 schema and the same exit codes as human output.
+  - Source-boundary drift uses working-tree staged, unstaged, and untracked paths only.
+  - Missing or partial git discovery reports `not_checked` instead of false pass.
+- Archive path: `openspec/changes/archive/2026-05-03-add-openspec-trace-status-cli/`
 - Commit: pending
 
 ### add-openspec-trace-task-runner-cli

@@ -98,6 +98,16 @@ bun scripts/openspec-trace.ts index validate
 
 `index add-active` creates or updates compact active cards, `index archive` moves or creates archived cards after `openspec archive`, and `index validate` checks active/archive card consistency plus deterministic compactness rules. Generated placeholders use the `TODO(index):` prefix; human-authored summary, related changes, and key decisions are preserved when possible.
 
+The helper can prepare `trio_review` handoff metadata without invoking the review tool:
+
+```bash
+bun scripts/openspec-trace.ts review-pack add-example-change
+bun scripts/openspec-trace.ts review-pack add-example-change --json
+bun scripts/openspec-trace.ts review-pack add-example-change --staged
+```
+
+`review-pack` emits the plan path, absolute reviewed file paths, specs directory, deleted files, validation summary, and pending post-review tasks. Default file discovery includes staged, unstaged, and untracked files; `--staged` or `--unstaged` can narrow the scan.
+
 If an OpenSpec project is missing `openspec/INDEX.md`, `/trio-os` asks whether to create the index first, continue without it for the current task, or skip the prompt for the current session. The canonical dedicated prompt-template command for index bootstrap or repair is `/trio-os-make-index`; users asking for `/trio-os:make_index` mean this workflow, but no runtime alias is provided by default.
 
 ## What's inside

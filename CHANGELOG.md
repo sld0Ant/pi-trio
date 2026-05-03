@@ -14,6 +14,7 @@
 - `openspec-trace` task helper for command-backed factual checkbox updates and phase readiness checks
 - `openspec-trace status` read-only gate summary for OpenSpec change artifacts, validation, source-boundary drift, task readiness, archive state, and commit readiness
 - `openspec-trace index` helper for active/archive traceability cards and compactness validation
+- `openspec-trace review-pack` helper for `trio_review` handoff metadata
 
 ### Changed
 
