@@ -25,6 +25,19 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
   - Missing index setup requires user selection or explicit make-index workflow invocation.
   - Unknown commit hashes may remain `pending` when commit trailers provide the primary link.
 
+### openspec-trace-cli-status
+- Status: baseline
+- Path: `openspec/specs/openspec-trace-cli-status/spec.md`
+- Summary: Defines the read-only `openspec-trace status` command for OpenSpec change gate summaries, phase readiness, artifact checks, validation state, source-boundary drift, and JSON output.
+- Related changes:
+  - `add-openspec-trace-status-cli`
+  - `add-openspec-trace-task-runner-cli`
+  - `add-openspec-trace-commit-cli`
+- Key decisions:
+  - Status is read-only and reports failures through output and exit codes.
+  - Changed files come from staged, unstaged, and untracked working-tree paths.
+  - JSON output uses a stable v1 shape with per-check states.
+
 ### trio-reviewer-diagnostics
 - Status: baseline
 - Path: `openspec/specs/trio-reviewer-diagnostics/spec.md`
@@ -77,21 +90,6 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 - Archive path: pending
 - Commit: `6d2112a`
 
-### add-openspec-trace-status-cli
-- Status: proposed-future
-- Capability:
-  - openspec-trace-cli-status
-- Summary: Future read-only status command for OpenSpec change gates and phase readiness.
-- Source boundary: pending implementation plan
-- Related changes:
-  - `add-openspec-traceability-index`
-  - `add-openspec-trace-task-runner-cli`
-- Key decisions:
-  - Status is read-only.
-  - If task helper is unavailable, task readiness is reported as warning/not checked.
-- Archive path: pending
-- Commit: pending
-
 ### add-openspec-trace-index-cli
 - Status: proposed-future
 - Capability:
@@ -125,6 +123,27 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 - Commit: pending
 
 ## Archived Changes
+
+### add-openspec-trace-status-cli
+- Status: archived
+- Capability:
+  - openspec-trace-cli-status
+- Summary: Adds `openspec-trace status` for read-only gate summaries across artifacts, validation, source-boundary drift, task readiness, archive state, and commit readiness.
+- Source boundary:
+  - `scripts/openspec-trace.ts`
+  - `README.md`
+  - `CHANGELOG.md`
+- Related changes:
+  - `add-openspec-traceability-index`
+  - `add-openspec-trace-task-runner-cli`
+  - `add-openspec-trace-commit-cli`
+- Key decisions:
+  - Phase gates are explicit for `pre-review`, `post-review`, `archive`, and `commit`.
+  - JSON output uses a stable v1 schema and the same exit codes as human output.
+  - Source-boundary drift uses working-tree staged, unstaged, and untracked paths only.
+  - Missing or partial git discovery reports `not_checked` instead of false pass.
+- Archive path: `openspec/changes/archive/2026-05-03-add-openspec-trace-status-cli/`
+- Commit: pending
 
 ### add-openspec-trace-task-runner-cli
 - Status: archived
