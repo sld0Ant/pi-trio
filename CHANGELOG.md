@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Added
+
+- Plan review depth controls: `critical_only`, `critical_and_important`, and `exhaustive`
+- OpenSpec review packs for `trio_plan_review` via `mode: "openspec"` and `change_dir`
+- Approvable plan-review verdicts: `BLOCKED`, `APPROVABLE_WITH_NOTES`, and `APPROVED`
+
+### Changed
+
+- `/trio-os` reviews full OpenSpec artifact packs instead of `tasks.md` alone and stops planning when strict validation passes with no Critical findings
+
 ### Fixed
 
 - Get `authStorage` from `modelRegistry.authStorage` instead of non-existent `ctx.authStorage` — pi's `ExtensionContext` never exposed `authStorage` directly, causing "no auth storage or model registry available" error on every review call

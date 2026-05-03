@@ -36,7 +36,7 @@ Standard trio workflow:
 Trio integrated with OpenSpec (spec-driven development):
 
 1. **OpenSpec Propose** — creates proposal, design, specs, tasks
-2. **Plan Review** — independent sub-agent reviews tasks.md
+2. **Plan Review** — independent sub-agent reviews the full OpenSpec artifact pack
 3. **User approval**
 4. **Executor** — implements according to tasks.md
 5. **Code Review** — sub-agent reviews code against both plan and OpenSpec specs
@@ -62,6 +62,54 @@ The reviewer tools can be called directly outside of the `/trio` workflow:
 - **`trio_review`** — pass a plan + file paths to get an independent code review
 
 Just ask the agent: "review this plan with trio_plan_review" or "run trio_review on these files".
+
+### Plan review depth
+
+`trio_plan_review` supports review depth controls:
+
+| Depth | Use when |
+|-------|----------|
+| `critical_only` | Confirmation pass after blockers were fixed |
+| `critical_and_important` | Default planning review |
+| `exhaustive` | You explicitly want adversarial review |
+
+Plan review verdicts are:
+
+| Verdict | Meaning |
+|---------|---------|
+| `BLOCKED` | Critical findings exist or required context is missing |
+| `APPROVABLE_WITH_NOTES` | No Critical findings, but notes remain |
+| `APPROVED` | No Critical or Important findings |
+
+For backward compatibility, `APPROVABLE_WITH_NOTES`, `APPROVED`, and legacy `PASS` map to tool detail verdict `PASS`; `BLOCKED`, legacy `NEEDS WORK`, and `UNKNOWN` map to `NEEDS WORK`.
+
+### OpenSpec review packs
+
+For OpenSpec changes, review the full artifact pack instead of `tasks.md` alone:
+
+```json
+{
+  "plan": "",
+  "mode": "openspec",
+  "change_dir": "openspec/changes/my-change",
+  "review_depth": "critical_and_important"
+}
+```
+
+The pack includes proposal, design, tasks, delta specs, relevant baseline specs when discoverable, review scope, stop condition, and `openspec validate <change> --strict` output. In OpenSpec mode, tool details also include `openspecValidationStatus` (`pass`, `fail`, or `not_run`) for callers that need a structured stop-condition signal.
+
+A confirmation review can use:
+
+```json
+{
+  "plan": "",
+  "mode": "openspec",
+  "change_dir": "openspec/changes/my-change",
+  "review_depth": "critical_only"
+}
+```
+
+Stop planning when strict OpenSpec validation passes and the raw verdict is `APPROVABLE_WITH_NOTES`, `APPROVED`, or legacy `PASS`.
 
 ## Reviewer profiles
 

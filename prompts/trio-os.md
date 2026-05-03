@@ -20,7 +20,13 @@ Read the openspec skill. Use `/opsx:propose` workflow to create the change:
 - specs/ — delta-specs with requirements and scenarios
 - tasks.md — implementation checklist
 
-After artifacts are created, call `trio_plan_review` with the tasks.md content for independent review. Fix if needed. Present artifacts to user for approval. Do NOT create a separate trio plan — OpenSpec tasks.md IS the plan.
+After artifacts are created, call `trio_plan_review` with an OpenSpec review pack, not tasks.md alone:
+- `plan`: `""`
+- `mode`: `"openspec"`
+- `change_dir`: `"openspec/changes/<name>"`
+- `review_depth`: `"critical_and_important"`
+
+Fix Critical and selected Important issues. For confirmation review after Critical issues are fixed, call `trio_plan_review` again with `review_depth: "critical_only"`. If strict OpenSpec validation passes and the raw verdict is `APPROVABLE_WITH_NOTES`, `APPROVED`, or legacy `PASS`, stop plan review and present artifacts to the user for approval. If the raw verdict is `BLOCKED`, `NEEDS WORK`, or `UNKNOWN`, continue fixing or ask the user for guidance. Do NOT create a separate trio plan — OpenSpec tasks.md IS the plan.
 
 **Phase 2 — Execute** (load skill `executor`):
 After artifacts are approved, read the executor skill. Implement strictly according to tasks.md.

@@ -45,20 +45,27 @@ OpenSpec uses RFC 2119 keywords with strict semantics:
 
 | Keyword | Meaning | Review rule |
 |---------|---------|-------------|
-| **MUST / SHALL** | Mandatory | Missing implementation = Critical |
-| **SHOULD** | Recommended | Missing = Important (unless explicitly justified) |
+| **MUST / SHALL** | Mandatory | Plan review: must be traceable to design/tasks. Code review: missing implementation = Critical |
+| **SHOULD** | Recommended | Plan review: should be planned or justified. Code review: missing = Important unless justified |
 | **MAY** | Optional | Missing = acceptable, no issue |
 
+During pre-implementation plan review:
+- [ ] All MUST/SHALL requirements have traceability through proposal → specs → design → tasks
+- [ ] SHOULD requirements are planned or explicitly justified as deferred/skipped
+- [ ] Do not require source code to exist before implementation starts
+
+During post-implementation code review:
 - [ ] All MUST/SHALL requirements have corresponding code
 - [ ] SHOULD requirements are either implemented or have documented justification for skipping
 - [ ] MAY requirements are not flagged if absent
 
 ## tasks.md Validation
 
-- [ ] Every task in tasks.md maps to a concrete code change
-- [ ] All tasks are checked off (`[x]`) if implementation is complete
+- [ ] Every implementation task in tasks.md maps to a concrete code, spec, or documentation change
+- [ ] Clearly separated verification gates are allowed and do not need to map to code changes
+- [ ] All implementation tasks are checked off (`[x]`) if implementation is complete
 - [ ] Task numbering follows dependency order (parent tasks before subtasks)
-- [ ] No tasks exist that are outside the scope of specs + design
+- [ ] No implementation tasks exist that are outside the scope of specs + design
 
 ## proposal.md Validation
 
@@ -77,8 +84,15 @@ OpenSpec uses RFC 2119 keywords with strict semantics:
 
 - [ ] proposal intent → specs requirements → design approach → tasks checklist — all aligned
 - [ ] No requirements in specs that contradict the proposal
-- [ ] No tasks that implement features not covered by specs or design
+- [ ] No implementation tasks that implement features not covered by specs or design
 - [ ] No design decisions that violate spec requirements
+- [ ] Accepted trade-offs and explicit non-goals are respected unless they contradict requirements or source boundary
+
+## Review Convergence
+
+- [ ] Respect the requested review depth from the review pack
+- [ ] In `critical_only` mode, report only Critical blockers
+- [ ] If strict validation passes and no Critical findings remain, the plan is approvable even if non-blocking notes exist
 
 ## Archive Readiness (when reviewing before archive)
 

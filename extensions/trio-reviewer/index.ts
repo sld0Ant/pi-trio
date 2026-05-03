@@ -11,8 +11,9 @@ import {
 
 import { Type } from "@sinclair/typebox";
 import { Container, type SettingItem, SettingsList, Text, matchesKey } from "@mariozechner/pi-tui";
-import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { join, dirname, basename } from "node:path";
+import { readFileSync, readdirSync, existsSync, realpathSync, statSync, lstatSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { join, dirname, basename, resolve, relative, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Model } from "@mariozechner/pi-ai";
 
@@ -22,6 +23,7 @@ const PLAN_REVIEWER_PROMPT = join(__dirname, "plan-reviewer-prompt.md");
 const BUILTIN_PROFILES_DIR = join(__dirname, "profiles");
 const GLOBAL_PROFILES_DIR = join(process.env.HOME ?? "~", ".pi", "agent", "trio-profiles");
 const PROJECT_PROFILES_DIR = join(process.cwd(), ".pi", "trio-profiles");
+const MAX_PACK_FILE_SIZE = 128 * 1024;
 
 function loadProfilesFromDir(dir: string, profiles: Map<string, string>): void {
 	if (!existsSync(dir)) return;
@@ -85,29 +87,24 @@ async function runSubAgent(
 		}
 	});
 
-	await session.prompt(userPrompt);
-	session.dispose();
-	return result;
+	try {
+		await session.prompt(userPrompt);
+		return result;
+	} finally {
+		session.dispose();
+	}
 }
 
 function readSpecs(specsDir: string): string {
-	let content = "";
 	try {
-		const entries = readdirSync(specsDir, { withFileTypes: true, recursive: true });
-		for (const entry of entries) {
-			if (entry.isFile() && entry.name.endsWith(".md")) {
-				const specPath = join(entry.parentPath ?? entry.path, entry.name);
-				try {
-					content += `\n## Spec: ${specPath}\n${readFileSync(specPath, "utf-8")}\n`;
-				} catch {
-					content += `\n## Spec: ${specPath}\n[ERROR: Could not read]\n`;
-				}
-			}
-		}
+		const specsRoot = realpathSync(specsDir);
+		if (!statSync(specsRoot).isDirectory()) return "[ERROR: Specs path is not a directory]";
+		const specFiles = markdownFilesUnder(specsRoot).map((path) => safeMarkdownSection(path, specsRoot));
+		const skippedLinks = skippedMarkdownSymlinksUnder(specsRoot).map((path) => `## File: ${path}\n[ERROR: Symlink skipped]`);
+		return [...specFiles, ...skippedLinks].join("\n\n") || "[NO SPECS FOUND]";
 	} catch {
-		content = "[ERROR: Could not read specs directory]";
+		return "[ERROR: Could not read specs directory]";
 	}
-	return content;
 }
 
 function buildPrompt(basePromptPath: string, profileContents: Map<string, string>): string {
@@ -120,8 +117,183 @@ function buildPrompt(basePromptPath: string, profileContents: Map<string, string
 	return prompt;
 }
 
+type ReviewDepth = "critical_only" | "critical_and_important" | "exhaustive";
+type ReviewMode = "generic" | "openspec";
+
+function parseRawVerdict(text: string): string {
+	const verdictLine = text
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.find((line) => line.startsWith("## Verdict:"));
+	const match = verdictLine?.match(/^## Verdict:\s*(BLOCKED|APPROVABLE_WITH_NOTES|APPROVED|PASS|NEEDS WORK)(?:\b|\s|—|-|:|$)/);
+	return match?.[1] ?? "UNKNOWN";
+}
+
 function parseVerdict(text: string): string {
-	return text.includes("PASS") && !text.includes("NEEDS WORK") ? "PASS" : "NEEDS WORK";
+	const rawVerdict = parseRawVerdict(text);
+	return rawVerdict === "APPROVABLE_WITH_NOTES" || rawVerdict === "APPROVED" || rawVerdict === "PASS" ? "PASS" : "NEEDS WORK";
+}
+
+function isInside(child: string, parent: string): boolean {
+	const rel = relative(parent, child);
+	return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+}
+
+function fenced(content: string): string {
+	return `\`\`\`text\n${content.replaceAll("```", "``\\`")}\n\`\`\``;
+}
+
+function safeReadFile(path: string): string {
+	try {
+		const stat = statSync(path);
+		if (!stat.isFile()) return "[ERROR: Not a regular file]";
+		if (stat.size > MAX_PACK_FILE_SIZE) return `[ERROR: File too large (${stat.size} bytes)]`;
+		return readFileSync(path, "utf-8");
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return `[ERROR: ${message}]`;
+	}
+}
+
+function markdownFilesUnder(root: string): string[] {
+	if (!existsSync(root)) return [];
+	const files: string[] = [];
+	try {
+		const entries = readdirSync(root, { withFileTypes: true, recursive: true });
+		for (const entry of entries) {
+			if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
+			const path = join(entry.parentPath ?? entry.path, entry.name);
+			files.push(path);
+		}
+	} catch {
+		return [];
+	}
+	return files.sort((a, b) => relative(root, a).localeCompare(relative(root, b)));
+}
+
+function safeMarkdownSection(path: string, allowedRoot: string): string {
+	try {
+		const linkStat = lstatSync(path);
+		if (linkStat.isSymbolicLink()) return `## File: ${path}\n[ERROR: Symlink skipped]`;
+		const realPath = realpathSync(path);
+		if (!isInside(realPath, allowedRoot)) return `## File: ${path}\n[ERROR: Escapes allowed root]`;
+		return `## File: ${path}\n${fenced(safeReadFile(realPath))}`;
+	} catch (error) {
+		if ((error as Error & { code?: string }).code === "ENOENT") return `## File: ${path}\n[MISSING]`;
+		const message = error instanceof Error ? error.message : String(error);
+		return `## File: ${path}\n[ERROR: ${message}]`;
+	}
+}
+
+function skippedMarkdownSymlinksUnder(root: string): string[] {
+	if (!existsSync(root)) return [];
+	try {
+		const entries = readdirSync(root, { withFileTypes: true, recursive: true });
+		return entries
+			.filter((entry) => entry.isSymbolicLink() && entry.name.endsWith(".md"))
+			.map((entry) => join(entry.parentPath ?? entry.path, entry.name))
+			.sort((a, b) => relative(root, a).localeCompare(relative(root, b)));
+	} catch {
+		return [];
+	}
+}
+
+function resolveOpenSpecChange(cwd: string, changeDir: string): { changeRoot: string; changesRoot: string; changeName: string } | { error: string } {
+	try {
+		const changesPath = join(cwd, "openspec", "changes");
+		const changesStat = lstatSync(changesPath);
+		if (changesStat.isSymbolicLink()) return { error: "openspec/changes must not be a symlink" };
+		if (!changesStat.isDirectory()) return { error: "openspec/changes must be a directory" };
+		const changesRoot = realpathSync(changesPath);
+		const requestedPath = resolve(cwd, changeDir);
+		const requestedStat = lstatSync(requestedPath);
+		if (requestedStat.isSymbolicLink()) return { error: "change_dir must not be a symlink" };
+		if (!requestedStat.isDirectory()) return { error: "change_dir must be a directory" };
+		const changeRoot = realpathSync(requestedPath);
+		const parent = dirname(changeRoot);
+		if (parent !== changesRoot) return { error: `change_dir must resolve directly under ${join("openspec", "changes")}` };
+		if (basename(changeRoot) !== basename(requestedPath)) return { error: "change_dir canonical basename differs from requested basename" };
+		return { changeRoot, changesRoot, changeName: basename(changeRoot) };
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return { error: message };
+	}
+}
+
+function runOpenSpecValidate(cwd: string, changeName: string): { text: string; status: "pass" | "fail" | "not_run" } {
+	const result = spawnSync("openspec", ["validate", changeName, "--strict"], {
+		cwd,
+		shell: false,
+		encoding: "utf-8",
+		timeout: 30_000,
+		maxBuffer: 128 * 1024,
+	});
+	const output = [`exitCode: ${result.status}`, result.stdout?.trim(), result.stderr?.trim()].filter(Boolean).join("\n");
+	if (result.error) {
+		if ((result.error as Error & { code?: string }).code === "ENOENT") return { text: "NOT RUN: openspec CLI not found", status: "not_run" };
+		return { text: [`ERROR: ${result.error.message}`, output].filter(Boolean).join("\n"), status: "fail" };
+	}
+	return { text: output, status: result.status === 0 ? "pass" : "fail" };
+}
+
+function buildOpenSpecPack(params: {
+	cwd: string;
+	plan: string;
+	changeDir: string;
+	reviewDepth: ReviewDepth;
+	includeBaselineSpecs: boolean;
+	reviewScope?: string;
+	stopCondition?: string;
+}): { text: string; validationStatus?: "pass" | "fail" | "not_run" } {
+	const resolved = resolveOpenSpecChange(params.cwd, params.changeDir);
+	if ("error" in resolved) return { text: `# OpenSpec Plan Review Pack\n\n## Pack Error\n\n[ERROR: ${resolved.error}]\n\n## Caller Notes\n\n${fenced(params.plan)}` };
+
+	const defaultScope = [
+		"Review for blockers, contradictions, source-boundary conflicts, OpenSpec traceability gaps, and unsafe undefined behavior inside the stated scope.",
+		"Do not review future slices, unrelated architecture alternatives, docs-site work unless in scope, or exhaustive hardening outside accepted trade-offs.",
+	].join("\n");
+	const requiredStopCondition = [
+		"OpenSpec strict validation plus raw verdict APPROVABLE_WITH_NOTES, APPROVED, or legacy PASS means approvable.",
+		"Validation failure, BLOCKED, NEEDS WORK, or UNKNOWN is not approvable.",
+		"Critical count is represented by reviewer verdict; do not guess it by string-scanning sections.",
+	].join("\n");
+	const stopCondition = params.stopCondition ? `${requiredStopCondition}\n\nCaller stop condition:\n${fenced(params.stopCondition)}` : requiredStopCondition;
+
+	const sections: string[] = [
+		"# OpenSpec Plan Review Pack",
+		`## Review Settings\n\n- mode: openspec\n- review_depth: ${params.reviewDepth}\n- change: ${resolved.changeName}\n\n### Stop Condition\n\n${stopCondition}`,
+		`## Review Scope\n\n### Required Scope\n\n${defaultScope}${params.reviewScope ? `\n\n### Caller Scope\n\n${fenced(params.reviewScope)}` : ""}`,
+		safeMarkdownSection(join(resolved.changeRoot, "proposal.md"), resolved.changeRoot),
+		safeMarkdownSection(join(resolved.changeRoot, "design.md"), resolved.changeRoot),
+	];
+
+	const specsRoot = join(resolved.changeRoot, "specs");
+	const specFiles = markdownFilesUnder(specsRoot);
+	const skippedSpecLinks = skippedMarkdownSymlinksUnder(specsRoot).map((path) => `## File: ${path}\n[ERROR: Symlink skipped]`);
+	const deltaSections = [...specFiles.map((path) => safeMarkdownSection(path, resolved.changeRoot)), ...skippedSpecLinks];
+	sections.push(`## Delta Specs\n\n${deltaSections.length ? deltaSections.join("\n\n") : "[MISSING]"}`);
+
+	if (params.includeBaselineSpecs) {
+		let baselineRoot = join(params.cwd, "openspec", "specs");
+		try {
+			if (existsSync(baselineRoot)) baselineRoot = realpathSync(baselineRoot);
+		} catch {
+			baselineRoot = join(params.cwd, "openspec", "specs");
+		}
+		const capabilities = [...new Set(specFiles.map((path) => relative(specsRoot, path).split(/[\\/]/)[0]).filter(Boolean))].sort();
+		const baselineSections = capabilities.map((capability) => {
+			const baselinePath = join(baselineRoot, capability, "spec.md");
+			return existsSync(baselinePath) ? safeMarkdownSection(baselinePath, baselineRoot) : `## Baseline Spec: ${capability}\n[MISSING]`;
+		});
+		if (skippedSpecLinks.length > 0) baselineSections.push("## Baseline Discovery Note\nSymlinked delta specs were skipped and excluded from baseline discovery.");
+		sections.push(`## Baseline Specs\n\n${baselineSections.length ? baselineSections.join("\n\n") : "[NONE DISCOVERED]"}`);
+	}
+
+	sections.push(safeMarkdownSection(join(resolved.changeRoot, "tasks.md"), resolved.changeRoot));
+	if (params.plan.trim()) sections.push(`## Caller Notes\n\n${fenced(params.plan)}`);
+	const validation = runOpenSpecValidate(params.cwd, resolved.changeName);
+	sections.push(`## OpenSpec Validation\n\n- status: ${validation.status}\n- command: openspec validate ${resolved.changeName} --strict\n\n${fenced(validation.text)}`);
+	return { text: sections.join("\n\n---\n\n"), validationStatus: validation.status };
 }
 
 export default function (pi: ExtensionAPI) {
@@ -253,15 +425,25 @@ export default function (pi: ExtensionAPI) {
 		name: "trio_plan_review",
 		label: "Trio Plan Review",
 		description: `Run an independent plan review via a sub-agent with clean context.
-The sub-agent receives ONLY the plan text. It does NOT see the chat history.
+The sub-agent receives ONLY the plan text or generated OpenSpec pack. It does NOT see the chat history.
 
 Use this after the Planner produces a plan, before user approval.
-Pass the full plan text.`,
+Pass the full plan text, or use mode=openspec with a change_dir.`,
 		parameters: Type.Object({
-			plan: Type.String({ description: "The full plan text to review" }),
+			plan: Type.String({ description: "The full plan text to review. Use an empty string when mode=openspec and change_dir is provided." }),
+			review_depth: Type.Optional(
+				Type.Union([Type.Literal("critical_only"), Type.Literal("critical_and_important"), Type.Literal("exhaustive")]),
+			),
+			mode: Type.Optional(Type.Union([Type.Literal("generic"), Type.Literal("openspec")])),
+			change_dir: Type.Optional(Type.String({ description: "OpenSpec change directory, e.g. openspec/changes/my-change" })),
+			include_baseline_specs: Type.Optional(Type.Boolean({ description: "Include relevant baseline specs in OpenSpec mode" })),
+			review_scope: Type.Optional(Type.String({ description: "Additional review scope instructions" })),
+			stop_condition: Type.Optional(Type.String({ description: "Stop condition to include in the review pack" })),
 		}),
 
 		async execute(toolCallId, params, signal, onUpdate, ctx) {
+			const reviewDepth = (params.review_depth ?? "critical_and_important") as ReviewDepth;
+			const reviewMode = (params.mode ?? "generic") as ReviewMode;
 			const model = getModel(ctx);
 			const modelRegistry = currentModelRegistry ?? ctx.modelRegistry;
 			const authStorage = modelRegistry?.authStorage;
@@ -280,10 +462,34 @@ Pass the full plan text.`,
 
 			try {
 				const prompt = buildPrompt(PLAN_REVIEWER_PROMPT, activeProfiles);
-				const result = await runSubAgent(model, prompt, `# Plan Review Request\n\n${params.plan}`, authStorage, modelRegistry, ctx.cwd ?? process.cwd());
+				let reviewText = params.plan;
+				let openspecValidationStatus: "pass" | "fail" | "not_run" | undefined;
+				if (reviewMode === "openspec" && !params.change_dir) {
+					return { content: [{ type: "text", text: "ERROR: change_dir is required when mode=openspec" }], isError: true };
+				}
+				if (reviewMode === "openspec" && params.change_dir) {
+					const resolvedChange = resolveOpenSpecChange(ctx.cwd ?? process.cwd(), params.change_dir);
+					if ("error" in resolvedChange) {
+						return { content: [{ type: "text", text: `ERROR: invalid change_dir: ${resolvedChange.error}` }], isError: true };
+					}
+					const pack = buildOpenSpecPack({
+						cwd: ctx.cwd ?? process.cwd(),
+						plan: params.plan,
+						changeDir: params.change_dir,
+						reviewDepth,
+						includeBaselineSpecs: params.include_baseline_specs ?? true,
+						reviewScope: params.review_scope,
+						stopCondition: params.stop_condition,
+					});
+					reviewText = pack.text;
+					openspecValidationStatus = pack.validationStatus;
+				} else {
+					reviewText = `# Review Settings\n\n- mode: ${reviewMode}\n- review_depth: ${reviewDepth}\n\n## Plan\n\n${fenced(params.plan)}`;
+				}
+				const result = await runSubAgent(model, prompt, `# Plan Review Request\n\n${reviewText}`, authStorage, modelRegistry, ctx.cwd ?? process.cwd());
 				return {
 					content: [{ type: "text", text: result }],
-					details: { verdict: parseVerdict(result), type: "plan", profiles: profileNames },
+					details: { verdict: parseVerdict(result), rawVerdict: parseRawVerdict(result), type: "plan", reviewDepth, mode: reviewMode, openspecValidationStatus, profiles: profileNames },
 				};
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
@@ -331,12 +537,8 @@ Pass the plan text, list of created/modified file paths, and optionally the Open
 
 			const fileContents: string[] = [];
 			for (const filePath of files) {
-				try {
-					const content = readFileSync(filePath, "utf-8");
-					fileContents.push(`## File: ${filePath}\n\`\`\`\n${content}\n\`\`\``);
-				} catch {
-					fileContents.push(`## File: ${filePath}\n[ERROR: Could not read file]`);
-				}
+				const content = safeReadFile(filePath);
+				fileContents.push(`## File: ${filePath}\n${fenced(content)}`);
 			}
 
 			let prompt = `# Review Request\n\n## Plan\n${plan}\n\n## Files\n${fileContents.join("\n\n")}`;
@@ -349,7 +551,7 @@ Pass the plan text, list of created/modified file paths, and optionally the Open
 				const result = await runSubAgent(model, reviewerSystemPrompt, prompt, authStorage, modelRegistry, ctx.cwd ?? process.cwd());
 				return {
 					content: [{ type: "text", text: result }],
-					details: { verdict: parseVerdict(result), filesReviewed: files.length, hasSpecs: !!specsDir, profiles: profileNames },
+					details: { verdict: parseVerdict(result), rawVerdict: parseRawVerdict(result), filesReviewed: files.length, hasSpecs: !!specsDir, profiles: profileNames },
 				};
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
