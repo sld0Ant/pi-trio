@@ -24,6 +24,7 @@ const BUILTIN_PROFILES_DIR = join(__dirname, "profiles");
 const GLOBAL_PROFILES_DIR = join(process.env.HOME ?? "~", ".pi", "agent", "trio-profiles");
 const PROJECT_PROFILES_DIR = join(process.cwd(), ".pi", "trio-profiles");
 const MAX_PACK_FILE_SIZE = 128 * 1024;
+const MANAGED_PROFILE_NAMES = new Set(["openspec"]);
 
 function loadProfilesFromDir(dir: string, profiles: Map<string, string>): void {
 	if (!existsSync(dir)) return;
@@ -46,6 +47,27 @@ function loadProfiles(): Map<string, string> {
 	loadProfilesFromDir(GLOBAL_PROFILES_DIR, profiles);
 	loadProfilesFromDir(PROJECT_PROFILES_DIR, profiles);
 	return profiles;
+}
+
+function selectableProfiles(profiles: Map<string, string>): Map<string, string> {
+	return new Map([...profiles].filter(([name]) => !MANAGED_PROFILE_NAMES.has(name)));
+}
+
+function buildInvocationProfiles(userProfiles: Map<string, string>, options: { includeOpenSpec: boolean }): Map<string, string> {
+	const invocationProfiles = new Map(userProfiles);
+	if (!options.includeOpenSpec) return invocationProfiles;
+
+	const openSpecProfile = loadProfiles().get("openspec");
+	if (openSpecProfile) invocationProfiles.set("openspec", openSpecProfile);
+	return invocationProfiles;
+}
+
+function isOpenSpecPlanReview(mode: ReviewMode): boolean {
+	return mode === "openspec";
+}
+
+function isOpenSpecCodeReview(specsDir?: string): boolean {
+	return !!specsDir;
 }
 
 async function runSubAgent(
@@ -307,7 +329,7 @@ export default function (pi: ExtensionAPI) {
 			if (entry.type === "custom" && entry.customType === "trio-reviewer-profiles") {
 				const savedNames = entry.data?.names as string[] | undefined;
 				if (savedNames?.length) {
-					const allProfiles = loadProfiles();
+					const allProfiles = selectableProfiles(loadProfiles());
 					activeProfiles = new Map<string, string>();
 					for (const name of savedNames) {
 						const content = allProfiles.get(name);
@@ -332,13 +354,13 @@ export default function (pi: ExtensionAPI) {
 			return;
 		}
 
-		const allProfiles = loadProfiles();
+		const allProfiles = selectableProfiles(loadProfiles());
 		if (allProfiles.size === 0) {
 			profilesResolved = true;
 			return;
 		}
 
-		// Enable all profiles by default when UI is unavailable or not interactive
+		// Enable all selectable profiles by default when UI is unavailable or not interactive
 		if (!ctx.hasUI) {
 			activeProfiles = allProfiles;
 			profilesResolved = true;
@@ -456,12 +478,13 @@ Pass the full plan text, or use mode=openspec with a change_dir.`,
 
 			await ensureProfiles(ctx);
 
-			const profileNames = [...activeProfiles.keys()];
+			const invocationProfiles = buildInvocationProfiles(activeProfiles, { includeOpenSpec: isOpenSpecPlanReview(reviewMode) });
+			const profileNames = [...invocationProfiles.keys()];
 			const profileInfo = profileNames.length > 0 ? ` with profiles: ${profileNames.join(", ")}` : " (no profiles)";
 			onUpdate?.({ content: [{ type: "text", text: `Reviewing plan with ${model.name}${profileInfo}...` }] });
 
 			try {
-				const prompt = buildPrompt(PLAN_REVIEWER_PROMPT, activeProfiles);
+				const prompt = buildPrompt(PLAN_REVIEWER_PROMPT, invocationProfiles);
 				let reviewText = params.plan;
 				let openspecValidationStatus: "pass" | "fail" | "not_run" | undefined;
 				if (reviewMode === "openspec" && !params.change_dir) {
@@ -531,7 +554,8 @@ Pass the plan text, list of created/modified file paths, and optionally the Open
 
 			await ensureProfiles(ctx);
 
-			const profileNames = [...activeProfiles.keys()];
+			const invocationProfiles = buildInvocationProfiles(activeProfiles, { includeOpenSpec: isOpenSpecCodeReview(specsDir) });
+			const profileNames = [...invocationProfiles.keys()];
 			const profileInfo = profileNames.length > 0 ? ` with profiles: ${profileNames.join(", ")}` : " (no profiles)";
 			onUpdate?.({ content: [{ type: "text", text: `Reviewing ${files.length} files with ${model.name}${profileInfo}...` }] });
 
@@ -547,7 +571,7 @@ Pass the plan text, list of created/modified file paths, and optionally the Open
 			}
 
 			try {
-				const reviewerSystemPrompt = buildPrompt(CODE_REVIEWER_PROMPT, activeProfiles);
+				const reviewerSystemPrompt = buildPrompt(CODE_REVIEWER_PROMPT, invocationProfiles);
 				const result = await runSubAgent(model, reviewerSystemPrompt, prompt, authStorage, modelRegistry, ctx.cwd ?? process.cwd());
 				return {
 					content: [{ type: "text", text: result }],

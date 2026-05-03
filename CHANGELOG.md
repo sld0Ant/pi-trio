@@ -12,6 +12,7 @@
 
 - `/trio-os` reviews full OpenSpec artifact packs instead of `tasks.md` alone and stops planning when strict validation passes with no Critical findings
 - Executor/reviewer instructions now document trio-os source-boundary amendments, factual task status, complete review handoffs, workflow-gate handling, and severity calibration
+- The built-in `openspec` reviewer profile is now managed by review context: hidden from the picker, excluded from generic reviews, and applied automatically for OpenSpec reviews
 
 ### Fixed
 

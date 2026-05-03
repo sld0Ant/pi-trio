@@ -121,7 +121,9 @@ Stop planning when strict OpenSpec validation passes and the raw verdict is `APP
 
 The reviewer uses profiles — checklists injected into the sub-agent's system prompt. On the first review call in a session, an interactive picker lets you toggle which profiles to apply.
 
-Built-in profiles: `nuxt`, `vue-spa`, `vue-lib`, `vue-testing`, `monorepo`, `docs`, `openspec`.
+Built-in selectable profiles: `nuxt`, `vue-spa`, `vue-lib`, `vue-testing`, `monorepo`, `docs`.
+
+The `openspec` profile is managed by the reviewer extension. It is hidden from the picker, is not applied to generic `/trio` reviews, and is applied automatically for OpenSpec review contexts (`trio_plan_review` with `mode: "openspec"` or `trio_review` with `specs_dir`).
 
 ### Custom profiles
 
