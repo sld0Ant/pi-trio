@@ -84,6 +84,13 @@ Task checkboxes are factual status, not intent:
 - Do not mark post-review archive, baseline validation, commit, push, or deploy tasks complete before those actions happen
 - Leave intentionally pending post-review tasks unchecked during implementation review
 
+When the repository provides `scripts/openspec-trace.ts` and it is safe to run, update OpenSpec task checkboxes through the helper instead of manual edits:
+
+- Use `bun scripts/openspec-trace.ts run <change-id> --task <task-id> -- <command...>` for command-backed tasks
+- Use `bun scripts/openspec-trace.ts tasks mark <change-id> --task <task-id>` for explicit factual updates after non-command actions
+
+Manual checkbox edits are allowed only when the helper is unavailable, broken, or currently being modified in a way that prevents safe use. Record the exception reason in verification notes or the review handoff.
+
 ### Review Pack Evidence
 
 Implementation review must receive enough evidence to verify the work without hidden conversation or terminal history.

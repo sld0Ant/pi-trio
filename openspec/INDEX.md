@@ -311,3 +311,29 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
   - Moving archived/completed changes means index classification/card placement only before archive.
 - Archive path: `openspec/changes/archive/2026-05-03-repair-openspec-traceability-index/`
 - Commit: pending
+
+### require-trace-task-helper-updates
+- Status: archived
+- Capability:
+  - trio-workflow-process-contract
+- Summary: Requires helper-backed OpenSpec task checkbox updates when `openspec-trace` is available and keeps reviewers read-only.
+- Source boundary:
+  - `CHANGELOG.md`
+  - `README.md`
+  - `extensions/trio-reviewer/reviewer-prompt.md`
+  - `openspec/INDEX.md`
+  - `openspec/changes/archive/**/require-trace-task-helper-updates/**`
+  - `openspec/changes/require-trace-task-helper-updates/**`
+  - `openspec/specs/trio-workflow-process-contract/spec.md`
+  - `prompts/trio-os.md`
+  - `skills/executor/SKILL.md`
+- Related changes:
+  - `add-openspec-trace-task-runner-cli`
+  - `implement-trio-workflow-process-contract`
+  - `add-openspec-trace-review-pack-cli`
+- Key decisions:
+  - Executors use `openspec-trace run` or `tasks mark` for factual checkbox updates when safe.
+  - Manual checkbox edits require a recorded exception reason.
+  - Reviewers remain read-only and may suggest exact task-helper commands after approving review results.
+- Archive path: `openspec/changes/archive/2026-05-03-require-trace-task-helper-updates/`
+- Commit: pending

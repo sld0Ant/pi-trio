@@ -50,7 +50,7 @@ Fix Critical and selected Important issues. For confirmation review after Critic
 
 **Phase 2 — Execute** (load skill `executor`):
 After artifacts are approved, read the executor skill. Implement strictly according to tasks.md.
-Update checkboxes in tasks.md as you complete each task: `[ ]` → `[x]`. Checkboxes are factual: mark tasks complete only after the action happened. Leave review tasks and post-review operations pending until their results/actions are known.
+Update checkboxes in tasks.md as you complete each task: `[ ]` → `[x]`. Checkboxes are factual: mark tasks complete only after the action happened. When `scripts/openspec-trace.ts` is available and safe to run, use `bun scripts/openspec-trace.ts run <change-id> --task <task-id> -- <command...>` for command-backed tasks and `bun scripts/openspec-trace.ts tasks mark <change-id> --task <task-id>` for explicit factual updates instead of manually editing checkboxes. If the helper is unavailable, broken, or currently being modified in a way that prevents safe use, record the manual-edit exception reason. Leave review tasks and post-review operations pending until their results/actions are known.
 Track all created/modified files and relevant verification/documentation artifacts. Exclude OpenSpec planning artifacts from the implementation file list unless they are verification artifacts or were modified during implementation.
 
 **Phase 3 — Code Review**:
@@ -62,6 +62,6 @@ After implementation, call the `trio_review` tool:
 If verdict is NEEDS WORK — fix the issues and call `trio_review` again.
 If verdict is PASS — run `/opsx:archive` to merge delta-specs into main specs and archive the change.
 
-Run post-review operations only after implementation review passes. Update `openspec/INDEX.md` after archive when the repository uses the traceability index. Record archive, baseline validation, index update, commit, push, deploy, or release tasks as complete only after those actions happen. OpenSpec implementation commits should include `OpenSpec-Change: <change-id>` using the original active change id.
+Run post-review operations only after implementation review passes. Update `openspec/INDEX.md` after archive when the repository uses the traceability index. Record archive, baseline validation, index update, commit, push, deploy, or release tasks as complete only after those actions happen, using the task helper when available and safe. OpenSpec implementation commits should include `OpenSpec-Change: <change-id>` using the original active change id.
 
 Report the final result to the user.

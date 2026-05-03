@@ -77,7 +77,7 @@ bun scripts/openspec-trace.ts tasks mark add-example-change --task 4.1
 bun scripts/openspec-trace.ts tasks check add-example-change --phase pre-review
 ```
 
-`run` executes the command as argv without shell interpolation, marks the exact task only after exit status `0`, leaves failed tasks unchanged, and reports missing or ambiguous task ids without mutation. `tasks check` is read-only and reports `pre-review` or `post-review` readiness from heading-based task phases.
+`run` executes the command as argv without shell interpolation, marks the exact task only after exit status `0`, leaves failed tasks unchanged, and reports missing or ambiguous task ids without mutation. `tasks check` is read-only and reports `pre-review` or `post-review` readiness from heading-based task phases. Trio-os execution should use these helpers for OpenSpec task checkbox updates when available and safe; manual checkbox edits should record an exception reason.
 
 The helper can report read-only OpenSpec workflow status:
 
