@@ -13,6 +13,7 @@
 - Local reviewer diagnostics with timing logs, profile details, safe default metadata, and opt-in raw capture
 - `openspec-trace` task helper for command-backed factual checkbox updates and phase readiness checks
 - `openspec-trace status` read-only gate summary for OpenSpec change artifacts, validation, source-boundary drift, task readiness, archive state, and commit readiness
+- `openspec-trace index` helper for active/archive traceability cards and compactness validation
 
 ### Changed
 
