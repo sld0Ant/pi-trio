@@ -49,7 +49,17 @@ openspec/
 └── prompts/opsx-*.md             # Auto-generated prompt templates
 ```
 
+Some repositories may also maintain optional roadmap specs in `openspec/roadmaps/*.md`. Roadmap specs sit above capability specs as compact planning context: direction, sequencing, dependencies, non-goals, and candidate slices. They do not replace baseline specs, delta specs, proposal/design/tasks artifacts, or implementation review.
+
 OpenSpec generates skills and prompts for Pi automatically. This skill is a **meta-guide** for effective usage.
+
+## Roadmap specs
+
+Roadmap specs are optional upper-level planning artifacts for repositories that need strategic context above individual capability specs.
+
+Use `openspec/roadmaps/<roadmap-id>.md` for roadmap documents, where `<roadmap-id>` identifies the roadmap area or theme in kebab-case. Each roadmap must include purpose, scope, current state, target direction, milestones, candidate changes, deferred or non-goal items, and traceability links when applicable. Keep roadmap documents compact: link or summarize related specs and changes without duplicating full baseline specs, full delta specs, full task lists, or full designs.
+
+When planning a new change, read roadmap specs only when they are relevant to the user request, capability names, source boundaries, explicit index links, or concrete dependency/conflict signals. Use roadmap context to choose a bounded next OpenSpec change, but keep baseline specs as the source of truth for implemented behavior and keep change-level `proposal.md`, `design.md`, `specs/`, and `tasks.md` as the implementation contract.
 
 ## Core commands (core profile)
 

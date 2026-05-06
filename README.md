@@ -52,6 +52,8 @@ Implementation review understands workflow gates: archive, baseline sync, commit
 
 Repositories may maintain `openspec/INDEX.md` as a compact navigation aid for active and archived changes. `/trio-os` reads the index before proposing new changes, then loads only relevant baseline specs or archived proposal/design files. Index cards should summarize status, capabilities, source boundaries, related changes, key decisions, archive paths, and commits without copying full specs or tasks.
 
+Repositories may also maintain optional roadmap specs in `openspec/roadmaps/*.md`. Roadmap specs sit above capability specs and capture direction, sequencing, dependencies, non-goals, and candidate slices. `/trio-os` reads only relevant roadmap specs when they exist and uses them as planning context; roadmap items are not implemented behavior or approved scope until a normal OpenSpec change promotes them into proposal, design, delta specs, and tasks.
+
 Commits implementing OpenSpec work should include a trailer using the original active change id:
 
 ```text

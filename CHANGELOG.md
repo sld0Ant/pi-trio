@@ -15,11 +15,13 @@
 - `openspec-trace status` read-only gate summary for OpenSpec change artifacts, validation, source-boundary drift, task readiness, archive state, and commit readiness
 - `openspec-trace index` helper for active/archive traceability cards and compactness validation
 - `openspec-trace review-pack` helper for `trio_review` handoff metadata
+- Optional roadmap specs in `openspec/roadmaps/*.md` as an upper-level planning layer above capability specs
 
 ### Changed
 
 - `/trio-os` reviews full OpenSpec artifact packs instead of `tasks.md` alone and stops planning when strict validation passes with no Critical findings
 - `/trio-os` now asks before bootstrapping a missing `openspec/INDEX.md` and can continue without the index when requested
+- `/trio-os` now loads relevant roadmap specs selectively when `openspec/roadmaps/` exists
 - Executor/reviewer instructions now document trio-os source-boundary amendments, helper-backed factual task status, complete review handoffs, workflow-gate handling, and severity calibration
 - The built-in `openspec` reviewer profile is now managed by review context: hidden from the picker, excluded from generic reviews, and applied automatically for OpenSpec reviews
 
