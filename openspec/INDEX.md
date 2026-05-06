@@ -12,6 +12,18 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 
 ## Baseline Specs
 
+### openspec-roadmap-spec
+- Status: baseline
+- Path: `openspec/specs/openspec-roadmap-spec/spec.md`
+- Summary: Defines optional roadmap specs as an upper-level planning layer above capability specs and active OpenSpec changes.
+- Related changes:
+  - `add-roadmap-spec-artifact`
+  - `add-openspec-traceability-index`
+- Key decisions:
+  - Roadmaps live under `openspec/roadmaps/*.md` and use kebab-case area or theme filenames.
+  - Roadmaps provide compact planning context, not implemented behavior or approved scope by themselves.
+  - Trio-os reads relevant roadmap specs selectively and records roadmap influence compactly in proposal/design artifacts.
+
 ### openspec-trace-cli-commit
 - Status: baseline
 - Path: `openspec/specs/openspec-trace-cli-commit/spec.md`
@@ -132,6 +144,28 @@ Compact navigation for OpenSpec history. Use this file to find relevant prior co
 
 
 ## Archived Changes
+
+### add-roadmap-spec-artifact
+- Status: archived
+- Capability:
+  - openspec-roadmap-spec
+- Summary: Adds roadmap specs as optional upper-level planning artifacts above capability specs and active OpenSpec changes.
+- Source boundary:
+  - `CHANGELOG.md`
+  - `README.md`
+  - `openspec/changes/add-roadmap-spec-artifact/**`
+  - `prompts/trio-os.md`
+  - `skills/openspec/SKILL.md`
+- Related changes:
+  - `add-openspec-traceability-index`
+  - `prompt-for-openspec-index-bootstrap`
+  - `implement-trio-workflow-process-contract`
+- Key decisions:
+  - Roadmaps live under `openspec/roadmaps/*.md` and identify roadmap areas or themes with kebab-case filenames.
+  - Roadmaps guide sequencing, dependencies, non-goals, and candidate slices without replacing proposal/design/spec/tasks gates.
+  - Trio-os reads only relevant roadmap specs and treats unrelated roadmap milestones as deferred context.
+- Archive path: `openspec/changes/archive/2026-05-06-add-roadmap-spec-artifact/`
+- Commit: pending
 
 ### add-openspec-trace-commit-cli
 - Status: archived

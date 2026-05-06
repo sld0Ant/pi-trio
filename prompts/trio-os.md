@@ -25,10 +25,13 @@ If the user cannot be asked, does not choose, or gives an ambiguous answer, cont
 
 Load prior context selectively:
 - read relevant baseline specs when capabilities match the task scope or index cards;
+- if `openspec/roadmaps/` exists, read only roadmap specs relevant to the user request, capability names, source boundaries, explicit index links, or concrete dependency/conflict signals;
 - read archived `proposal.md` and `design.md` only for directly related prior changes;
-- do not read archived `tasks.md`, full delta specs, or all archived changes by default.
+- do not read archived `tasks.md`, full delta specs, all roadmap specs, or all archived changes by default.
 
-Treat prior context as related when it shares a capability, is explicitly linked by the index, touches the same source boundary or workflow behavior, is named by the user request, or creates a concrete dependency/conflict.
+Treat prior context as related when it shares a capability, is explicitly linked by the index, touches the same source boundary or workflow behavior, is named by the user request, is referenced by a relevant roadmap, or creates a concrete dependency/conflict.
+
+Roadmap specs in `openspec/roadmaps/*.md` are optional upper-level planning context. Use them to understand direction, sequencing, dependencies, non-goals, and candidate slices, but do not treat roadmap items as implemented behavior or approved scope until a normal OpenSpec change promotes them into proposal/design/delta specs/tasks. When a proposal cites roadmap context, ensure the proposed scope is consistent with the specific roadmap decision being used and keep unrelated roadmap milestones deferred.
 
 Use `/opsx:propose` workflow to create the change:
 - proposal.md — why and what
@@ -36,7 +39,7 @@ Use `/opsx:propose` workflow to create the change:
 - specs/ — delta-specs with requirements and scenarios
 - tasks.md — implementation checklist
 
-When prior context is relevant, record it compactly in the new artifacts using sections such as `Related Changes` in `proposal.md` and `Prior Decisions Used` in `design.md`.
+When prior context is relevant, record it compactly in the new artifacts using sections such as `Related Changes` in `proposal.md`, `Prior Decisions Used` in `design.md`, or `Roadmap Context` when a roadmap influenced scope, sequencing, or non-goals.
 
 Ask for `tasks.md` sections that distinguish implementation, focused validation, review handoff, and post-review operations when applicable. Post-review operations include updating `openspec/INDEX.md`, archive, baseline validation, commit, push, deploy, or release steps that must happen only after implementation review passes.
 
